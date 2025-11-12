@@ -1,6 +1,6 @@
 """Pydantic models for validating metadata.yaml files."""
 
-from typing import Dict, List, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
@@ -39,17 +39,13 @@ class PackageMetadata(BaseModel):
     upstream_version: Optional[str] = Field(None, description="Original application version")
 
     # Description fields
-    description: str = Field(
-        max_length=80, description="Short description for package lists"
-    )
-    long_description: Optional[str] = Field(
-        None, description="Detailed multi-line description"
-    )
+    description: str = Field(max_length=80, description="Short description for package lists")
+    long_description: Optional[str] = Field(None, description="Detailed multi-line description")
 
     # URLs and assets
     homepage: Optional[HttpUrl] = Field(None, description="Project homepage URL")
     icon: Optional[str] = Field(None, description="Relative path to icon file")
-    screenshots: Optional[List[str]] = Field(None, description="Array of screenshot filenames")
+    screenshots: Optional[list[str]] = Field(None, description="Array of screenshot filenames")
 
     # Maintainer info
     maintainer: str = Field(
@@ -59,7 +55,7 @@ class PackageMetadata(BaseModel):
     license: str = Field(description="SPDX license identifier")
 
     # Debian classification
-    tags: List[str] = Field(min_length=1, description="Debian tags (debtags)")
+    tags: list[str] = Field(min_length=1, description="Debian tags (debtags)")
     debian_section: Literal[
         "admin",
         "comm",
@@ -86,17 +82,15 @@ class PackageMetadata(BaseModel):
     )
 
     # Dependencies
-    depends: Optional[List[str]] = Field(None, description="Package dependencies (Depends)")
-    recommends: Optional[List[str]] = Field(
-        None, description="Recommended packages (Recommends)"
-    )
-    suggests: Optional[List[str]] = Field(None, description="Suggested packages (Suggests)")
+    depends: Optional[list[str]] = Field(None, description="Package dependencies (Depends)")
+    recommends: Optional[list[str]] = Field(None, description="Recommended packages (Recommends)")
+    suggests: Optional[list[str]] = Field(None, description="Suggested packages (Suggests)")
 
     # Web UI configuration
     web_ui: Optional[WebUI] = Field(None, description="Web interface configuration")
 
     # Default configuration
-    default_config: Optional[Dict[str, str]] = Field(
+    default_config: Optional[dict[str, str]] = Field(
         None, description="Default environment variables"
     )
 
@@ -110,7 +104,7 @@ class PackageMetadata(BaseModel):
 
     @field_validator("tags")
     @classmethod
-    def validate_required_tag(cls, v: List[str]) -> List[str]:
+    def validate_required_tag(cls, v: list[str]) -> list[str]:
         """Validate that tags include role::container-app."""
         if "role::container-app" not in v:
             raise ValueError("Tags must include 'role::container-app'")

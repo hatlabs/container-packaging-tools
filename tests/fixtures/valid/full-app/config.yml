@@ -91,4 +91,4 @@ groups:
         type: string
         default: "0 2 * * *"
         required: false
-        description: Cron schedule for backups (default: daily at 2 AM)
+        description: "Cron schedule for backups (default: daily at 2 AM)"
