@@ -1,7 +1,7 @@
 """Input validation logic using Pydantic models."""
 
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple
+from typing import Any, NamedTuple
 
 import yaml
 from pydantic import ValidationError
@@ -24,9 +24,9 @@ class ValidationResult(NamedTuple):
     success: bool
     metadata: PackageMetadata | None = None
     config: ConfigSchema | None = None
-    compose: Dict[str, Any] | None = None
-    errors: List[str] = []
-    warnings: List[ValidationWarning] = []
+    compose: dict[str, Any] | None = None
+    errors: list[str] = []
+    warnings: list[ValidationWarning] = []
 
 
 def validate_input_directory(path: Path) -> ValidationResult:
@@ -38,8 +38,8 @@ def validate_input_directory(path: Path) -> ValidationResult:
     Returns:
         ValidationResult with success flag, parsed data, and any errors/warnings
     """
-    errors: List[str] = []
-    warnings: List[ValidationWarning] = []
+    errors: list[str] = []
+    warnings: list[ValidationWarning] = []
 
     # Check required files exist
     if not path.is_dir():
@@ -117,7 +117,7 @@ def validate_metadata(path: Path) -> PackageMetadata:
         ValidationError: If validation fails
         yaml.YAMLError: If YAML is invalid
     """
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     return PackageMetadata.model_validate(data)
@@ -136,13 +136,13 @@ def validate_config(path: Path) -> ConfigSchema:
         ValidationError: If validation fails
         yaml.YAMLError: If YAML is invalid
     """
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     return ConfigSchema.model_validate(data)
 
 
-def validate_compose(path: Path) -> Dict[str, Any]:
+def validate_compose(path: Path) -> dict[str, Any]:
     """Validate docker-compose.yml file.
 
     Args:
@@ -155,7 +155,7 @@ def validate_compose(path: Path) -> Dict[str, Any]:
         yaml.YAMLError: If YAML is invalid
         ValueError: If compose file is invalid
     """
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     if not isinstance(data, dict):
@@ -171,11 +171,10 @@ def validate_compose(path: Path) -> Dict[str, Any]:
         version_num = float(str(version))
         if version_num < 3.8:
             raise ValueError(
-                f"docker-compose.yml version {version} is too old, "
-                f"requires version 3.8 or newer"
+                f"docker-compose.yml version {version} is too old, requires version 3.8 or newer"
             )
     except (ValueError, TypeError):
-        raise ValueError(f"Invalid docker-compose.yml version: {version}")
+        raise ValueError(f"Invalid docker-compose.yml version: {version}") from None
 
     # Check for services
     if "services" not in data:
@@ -187,7 +186,7 @@ def validate_compose(path: Path) -> Dict[str, Any]:
     return data
 
 
-def check_compose_warnings(compose: Dict[str, Any]) -> List[ValidationWarning]:
+def check_compose_warnings(compose: dict[str, Any]) -> list[ValidationWarning]:
     """Check docker-compose file for potential issues.
 
     Args:
@@ -196,7 +195,7 @@ def check_compose_warnings(compose: Dict[str, Any]) -> List[ValidationWarning]:
     Returns:
         List of validation warnings
     """
-    warnings: List[ValidationWarning] = []
+    warnings: list[ValidationWarning] = []
 
     services = compose.get("services", {})
 
@@ -231,8 +230,8 @@ def cross_validate(
     base_path: Path,
     metadata: PackageMetadata,
     config: ConfigSchema,
-    compose: Dict[str, Any],
-) -> List[ValidationWarning]:
+    compose: dict[str, Any],
+) -> list[ValidationWarning]:
     """Perform cross-file validation checks.
 
     Args:
@@ -244,7 +243,7 @@ def cross_validate(
     Returns:
         List of validation warnings
     """
-    warnings: List[ValidationWarning] = []
+    warnings: list[ValidationWarning] = []
 
     # Check referenced icon file exists
     if metadata.icon:

@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import yaml
 
@@ -18,11 +18,11 @@ class AppDefinition:
 
     def __init__(
         self,
-        metadata: Dict[str, Any],
-        compose: Dict[str, Any],
-        config: Dict[str, Any],
+        metadata: dict[str, Any],
+        compose: dict[str, Any],
+        config: dict[str, Any],
         icon_path: Optional[Path] = None,
-        screenshot_paths: Optional[List[Path]] = None,
+        screenshot_paths: Optional[list[Path]] = None,
     ):
         """Initialize AppDefinition.
 
@@ -84,7 +84,7 @@ def load_input_files(directory: Path) -> AppDefinition:
     )
 
 
-def load_yaml(path: Path) -> Dict[str, Any]:
+def load_yaml(path: Path) -> dict[str, Any]:
     """Load and parse YAML file.
 
     Args:
@@ -101,7 +101,7 @@ def load_yaml(path: Path) -> Dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"File not found: {path}")
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     if not isinstance(data, dict):
@@ -110,7 +110,7 @@ def load_yaml(path: Path) -> Dict[str, Any]:
     return data
 
 
-def find_optional_files(directory: Path, patterns: List[str]) -> List[Path]:
+def find_optional_files(directory: Path, patterns: list[str]) -> list[Path]:
     """Find files matching patterns in directory.
 
     Args:
@@ -120,7 +120,7 @@ def find_optional_files(directory: Path, patterns: List[str]) -> List[Path]:
     Returns:
         List of matching file paths, sorted by name
     """
-    files: List[Path] = []
+    files: list[Path] = []
 
     for pattern in patterns:
         matches = list(directory.glob(pattern))

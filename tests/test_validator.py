@@ -6,7 +6,6 @@ import pytest
 
 from generate_container_packages.validator import (
     ValidationWarning,
-    cross_validate,
     format_pydantic_error,
     validate_compose,
     validate_config,
@@ -194,7 +193,7 @@ class TestCrossValidate:
 
         assert result.success is True
         # Icon exists, so no icon-related warning
-        icon_warnings = [w for w in result.warnings if "icon" in w.message.lower()]
+        [w for w in result.warnings if "icon" in w.message.lower()]
         # Should have zero or very few icon warnings if file exists
 
     def test_config_field_default_mismatch_warning(self):
@@ -301,6 +300,4 @@ class TestIntegration:
                 assert result.success is False, (
                     f"Fixture {fixture_dir.name} should have failed validation"
                 )
-                assert len(result.errors) > 0, (
-                    f"Fixture {fixture_dir.name} should have errors"
-                )
+                assert len(result.errors) > 0, f"Fixture {fixture_dir.name} should have errors"

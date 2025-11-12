@@ -1,6 +1,6 @@
 """Pydantic models for validating config.yml configuration schemas."""
 
-from typing import Any, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -24,9 +24,7 @@ class ConfigField(BaseModel):
     required: bool = Field(description="Whether the field is required")
     min: Optional[int] = Field(None, description="Minimum value (for integer/string types)")
     max: Optional[int] = Field(None, description="Maximum value (for integer/string types)")
-    options: Optional[List[str]] = Field(
-        None, description="Valid options (required for enum type)"
-    )
+    options: Optional[list[str]] = Field(None, description="Valid options (required for enum type)")
     description: Optional[str] = Field(None, description="Help text for the field")
 
     @model_validator(mode="after")
@@ -50,7 +48,7 @@ class ConfigGroup(BaseModel):
     )
     label: str = Field(description="Human-readable group label")
     description: Optional[str] = Field(None, description="Help text for the group")
-    fields: List[ConfigField] = Field(min_length=1, description="Fields in this group")
+    fields: list[ConfigField] = Field(min_length=1, description="Fields in this group")
 
 
 class ConfigSchema(BaseModel):
@@ -62,4 +60,4 @@ class ConfigSchema(BaseModel):
     """
 
     version: str = Field(pattern=r"^1\.0$", description="Schema version (currently 1.0)")
-    groups: List[ConfigGroup] = Field(min_length=1, description="Configuration groups")
+    groups: list[ConfigGroup] = Field(min_length=1, description="Configuration groups")

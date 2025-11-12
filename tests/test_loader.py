@@ -73,7 +73,7 @@ class TestAppDefinition:
 
         # Should be ISO 8601 format (contains T and Z or +)
         assert "T" in app_def.timestamp
-        assert ("Z" in app_def.timestamp or "+" in app_def.timestamp)
+        assert "Z" in app_def.timestamp or "+" in app_def.timestamp
 
 
 class TestLoadInputFiles:
@@ -235,9 +235,7 @@ class TestIntegration:
                 assert app_def.compose is not None, (
                     f"Failed to load compose from {fixture_dir.name}"
                 )
-                assert app_def.config is not None, (
-                    f"Failed to load config from {fixture_dir.name}"
-                )
+                assert app_def.config is not None, f"Failed to load config from {fixture_dir.name}"
                 assert app_def.timestamp is not None
                 assert app_def.tool_version is not None
 
