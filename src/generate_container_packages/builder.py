@@ -104,6 +104,9 @@ def copy_source_files(app_def: AppDefinition, source_dir: Path) -> None:
     Args:
         app_def: Application definition with file paths
         source_dir: Destination directory
+
+    Raises:
+        BuildError: If required file is missing
     """
     # Get input directory from AppDefinition
     input_dir = app_def.input_dir
@@ -112,9 +115,10 @@ def copy_source_files(app_def: AppDefinition, source_dir: Path) -> None:
     required_files = ["metadata.yaml", "docker-compose.yml", "config.yml"]
     for filename in required_files:
         src = input_dir / filename
+        if not src.exists():
+            raise BuildError(f"Required file missing: {filename}")
         dst = source_dir / filename
-        if src.exists():
-            shutil.copy2(src, dst)
+        shutil.copy2(src, dst)
 
     # Copy optional icon
     if app_def.icon_path and app_def.icon_path.exists():

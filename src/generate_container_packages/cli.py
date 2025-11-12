@@ -2,7 +2,10 @@
 
 import argparse
 import logging
+import shutil
 import sys
+import tempfile
+import traceback
 from pathlib import Path
 from typing import NoReturn
 
@@ -68,28 +71,32 @@ def main() -> int:
 
         # Step 3: Render templates
         logger.info("Rendering templates...")
-        import tempfile
-
         rendered_dir = Path(tempfile.mkdtemp(prefix="render-"))
-        render_all_templates(app_def, rendered_dir)
-        logger.info("✓ Templates rendered")
 
-        # Step 4: Build package
-        output_dir = Path(args.output).resolve()
-        logger.info(f"Building package (output: {output_dir})...")
-        deb_file = build_package(
-            app_def, rendered_dir, output_dir, keep_temp=args.keep_temp
-        )
-        logger.info(f"✓ Package built successfully: {deb_file}")
+        try:
+            render_all_templates(app_def, rendered_dir)
+            logger.info("✓ Templates rendered")
 
-        # Success message
-        pkg_name = app_def.metadata["package_name"]
-        print(f"\nSuccess! Package generated: {deb_file.name}")
-        print(f"  Package: {pkg_name}")
-        print(f"  Version: {app_def.metadata['version']}")
-        print(f"  Output: {output_dir}")
+            # Step 4: Build package
+            output_dir = Path(args.output).resolve()
+            logger.info(f"Building package (output: {output_dir})...")
+            deb_file = build_package(
+                app_def, rendered_dir, output_dir, keep_temp=args.keep_temp
+            )
+            logger.info(f"✓ Package built successfully: {deb_file}")
 
-        return EXIT_SUCCESS
+            # Success message
+            pkg_name = app_def.metadata["package_name"]
+            print(f"\nSuccess! Package generated: {deb_file.name}")
+            print(f"  Package: {pkg_name}")
+            print(f"  Version: {app_def.metadata['version']}")
+            print(f"  Output: {output_dir}")
+
+            return EXIT_SUCCESS
+        finally:
+            # Clean up temporary rendered directory
+            if rendered_dir.exists():
+                shutil.rmtree(rendered_dir)
 
     except ValidationError as e:
         logger.error("Validation failed:")
@@ -102,8 +109,6 @@ def main() -> int:
         print(f"\nERROR: Template rendering failed\n", file=sys.stderr)
         print(str(e), file=sys.stderr)
         if args.debug:
-            import traceback
-
             traceback.print_exc()
         return EXIT_TEMPLATE_ERROR
 
@@ -112,8 +117,6 @@ def main() -> int:
         print(f"\nERROR: Package build failed\n", file=sys.stderr)
         print(str(e), file=sys.stderr)
         if args.debug:
-            import traceback
-
             traceback.print_exc()
         return EXIT_BUILD_ERROR
 
@@ -126,8 +129,6 @@ def main() -> int:
         print(f"\nERROR: Unexpected error\n", file=sys.stderr)
         print(str(e), file=sys.stderr)
         if args.debug or args.verbose:
-            import traceback
-
             traceback.print_exc()
         return EXIT_BUILD_ERROR
 
@@ -238,8 +239,6 @@ def check_dependencies() -> None:
         ) from e
 
     # Check system tools (dpkg-buildpackage)
-    import shutil
-
     if not shutil.which("dpkg-buildpackage"):
         raise FileNotFoundError(
             "dpkg-buildpackage not found.\n"
