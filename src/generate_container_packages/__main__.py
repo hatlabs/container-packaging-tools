@@ -2,11 +2,13 @@
 
 import sys
 
+from generate_container_packages import __version__
+
 
 def main():
     """Main entry point for CLI."""
     print("Container Packaging Tools")
-    print(f"Version: {__package__.__version__}")
+    print(f"Version: {__version__}")
     return 0
 
 

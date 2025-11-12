@@ -3,6 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
+from schemas.config import ConfigField, ConfigGroup, ConfigSchema
 from schemas.metadata import PackageMetadata, WebUI
 
 
@@ -238,7 +239,6 @@ class TestConfigField:
             "max": 65535,
             "description": "Port for the application",
         }
-        from schemas.config import ConfigField
 
         field = ConfigField(**data)
         assert field.id == "APP_PORT"
@@ -255,7 +255,6 @@ class TestConfigField:
             "required": False,
             "options": ["debug", "info", "warning", "error"],
         }
-        from schemas.config import ConfigField
 
         field = ConfigField(**data)
         assert field.type == "enum"
@@ -270,7 +269,6 @@ class TestConfigField:
             "default": "info",
             "required": False,
         }
-        from schemas.config import ConfigField
 
         with pytest.raises(ValidationError) as exc_info:
             ConfigField(**data)
@@ -285,7 +283,6 @@ class TestConfigField:
             "default": 8080,
             "required": True,
         }
-        from schemas.config import ConfigField
 
         with pytest.raises(ValidationError) as exc_info:
             ConfigField(**data)
@@ -300,7 +297,6 @@ class TestConfigField:
             "default": 8080,
             "required": True,
         }
-        from schemas.config import ConfigField
 
         with pytest.raises(ValidationError) as exc_info:
             ConfigField(**data)
@@ -308,7 +304,6 @@ class TestConfigField:
 
     def test_all_field_types(self):
         """Test all valid field types."""
-        from schemas.config import ConfigField
 
         types = ["string", "integer", "boolean", "enum", "path", "password"]
         for field_type in types:
@@ -344,7 +339,6 @@ class TestConfigGroup:
                 }
             ],
         }
-        from schemas.config import ConfigGroup
 
         group = ConfigGroup(**data)
         assert group.id == "general"
@@ -365,7 +359,6 @@ class TestConfigGroup:
                 }
             ],
         }
-        from schemas.config import ConfigGroup
 
         with pytest.raises(ValidationError) as exc_info:
             ConfigGroup(**data)
@@ -386,7 +379,6 @@ class TestConfigGroup:
                 }
             ],
         }
-        from schemas.config import ConfigGroup
 
         with pytest.raises(ValidationError) as exc_info:
             ConfigGroup(**data)
@@ -395,7 +387,6 @@ class TestConfigGroup:
     def test_empty_fields_array(self):
         """Test group with no fields raises ValidationError."""
         data = {"id": "general", "label": "General", "fields": []}
-        from schemas.config import ConfigGroup
 
         with pytest.raises(ValidationError) as exc_info:
             ConfigGroup(**data)
@@ -429,7 +420,6 @@ class TestConfigSchema:
 
     def test_valid_config_schema(self, valid_config_schema):
         """Test valid configuration schema."""
-        from schemas.config import ConfigSchema
 
         schema = ConfigSchema(**valid_config_schema)
         assert schema.version == "1.0"
@@ -463,7 +453,6 @@ class TestConfigSchema:
                 ],
             }
         )
-        from schemas.config import ConfigSchema
 
         schema = ConfigSchema(**valid_config_schema)
         assert len(schema.groups) == 2
@@ -473,7 +462,6 @@ class TestConfigSchema:
     def test_invalid_version(self, valid_config_schema):
         """Test invalid version format raises ValidationError."""
         valid_config_schema["version"] = "2.0"
-        from schemas.config import ConfigSchema
 
         with pytest.raises(ValidationError) as exc_info:
             ConfigSchema(**valid_config_schema)
@@ -482,7 +470,6 @@ class TestConfigSchema:
     def test_empty_groups_array(self, valid_config_schema):
         """Test schema with no groups raises ValidationError."""
         valid_config_schema["groups"] = []
-        from schemas.config import ConfigSchema
 
         with pytest.raises(ValidationError) as exc_info:
             ConfigSchema(**valid_config_schema)
