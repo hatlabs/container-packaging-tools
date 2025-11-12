@@ -1,0 +1,25 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # Create configuration directory if it doesn't exist
+        mkdir -p "{{ paths.etc }}"
+
+        # Generate .env from template if it doesn't exist
+        if [ ! -f "{{ paths.etc }}/.env" ]; then
+            cp "{{ paths.lib }}/.env.template" "{{ paths.etc }}/.env"
+        fi
+
+        # Reload systemd to recognize new service
+        systemctl daemon-reload
+
+        # Enable service (but don't start automatically - let user configure first)
+        # Users can start with: systemctl start {{ package.name }}.service
+        systemctl enable {{ package.name }}.service || true
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
