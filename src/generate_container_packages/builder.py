@@ -4,15 +4,12 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 from generate_container_packages.loader import AppDefinition
 
 
 class BuildError(Exception):
     """Raised when package build fails."""
-
-    pass
 
 
 def build_package(
@@ -153,9 +150,15 @@ def generate_env_template(app_def: AppDefinition, source_dir: Path) -> None:
     # Generate environment variable file
     lines = ["# Default environment variables\n"]
     for key, value in sorted(default_config.items()):
-        # Escape any special characters in value
-        value_str = str(value).replace("$", "$$").replace("`", "\\`")
-        lines.append(f"{key}={value_str}\n")
+        # Escape special characters and quote the value for .env files
+        value_str = (
+            str(value)
+            .replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("$", "$$")
+            .replace("`", "\\`")
+        )
+        lines.append(f'{key}="{value_str}"\n')
 
     env_template = source_dir / ".env.template"
     env_template.write_text("".join(lines), encoding="utf-8")
@@ -253,7 +256,7 @@ def collect_artifacts(
     # Ensure output directory exists
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Pattern for artifacts (they're in build_dir parent, not source_dir)
+    # Patterns for artifacts in build_dir (not source_dir)
     patterns = [
         f"{pkg_name}_{version}_*.deb",
         f"{pkg_name}_{version}_*.buildinfo",

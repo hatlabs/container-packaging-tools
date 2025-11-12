@@ -7,7 +7,6 @@ import sys
 import tempfile
 import traceback
 from pathlib import Path
-from typing import NoReturn
 
 from jinja2 import TemplateError
 from pydantic import ValidationError
@@ -54,15 +53,38 @@ def main() -> int:
 
         # Step 1: Validate input files
         logger.info(f"Validating input directory: {input_dir}")
-        validate_input_directory(input_dir)
+        validation_result = validate_input_directory(input_dir)
+
+        if not validation_result.success:
+            logger.error("Validation failed.")
+            print("\nERROR: Validation failed\n", file=sys.stderr)
+            for error in validation_result.errors:
+                print(f"  - {error}", file=sys.stderr)
+            for warning in validation_result.warnings:
+                print(f"  (warning) {warning.message}", file=sys.stderr)
+            return EXIT_VALIDATION_ERROR
+
+        # Display warnings even on success
+        for warning in validation_result.warnings:
+            logger.warning(f"{warning.message}")
+
         logger.info("✓ Validation passed")
 
         if args.validate:
             print("Validation successful!")
+            if validation_result.warnings:
+                print("\nWarnings:")
+                for warning in validation_result.warnings:
+                    print(f"  - {warning.message}")
             return EXIT_SUCCESS
 
         # Check build dependencies only if actually building
-        check_dependencies()
+        try:
+            check_dependencies()
+        except (ImportError, FileNotFoundError) as e:
+            logger.error(f"Dependency check failed: {e}")
+            print(f"\nERROR: {e}\n", file=sys.stderr)
+            return EXIT_DEPENDENCY_ERROR
 
         # Step 2: Load input files
         logger.info("Loading input files...")
@@ -108,7 +130,7 @@ def main() -> int:
         logger.error(f"Template rendering failed: {e}")
         print(f"\nERROR: Template rendering failed\n", file=sys.stderr)
         print(str(e), file=sys.stderr)
-        if args.debug:
+        if hasattr(args, "debug") and args.debug:
             traceback.print_exc()
         return EXIT_TEMPLATE_ERROR
 
@@ -116,7 +138,7 @@ def main() -> int:
         logger.error(f"Package build failed: {e}")
         print(f"\nERROR: Package build failed\n", file=sys.stderr)
         print(str(e), file=sys.stderr)
-        if args.debug:
+        if hasattr(args, "debug") and args.debug:
             traceback.print_exc()
         return EXIT_BUILD_ERROR
 
@@ -128,7 +150,7 @@ def main() -> int:
         logger.error(f"Unexpected error: {e}")
         print(f"\nERROR: Unexpected error\n", file=sys.stderr)
         print(str(e), file=sys.stderr)
-        if args.debug or args.verbose:
+        if hasattr(args, "debug") and (args.debug or (hasattr(args, "verbose") and args.verbose)):
             traceback.print_exc()
         return EXIT_BUILD_ERROR
 
@@ -244,17 +266,6 @@ def check_dependencies() -> None:
             "dpkg-buildpackage not found.\n"
             "Install with: sudo apt install dpkg-dev debhelper"
         )
-
-
-def exit_with_error(message: str, exit_code: int = EXIT_BUILD_ERROR) -> NoReturn:
-    """Print error message and exit with code.
-
-    Args:
-        message: Error message to display
-        exit_code: Exit code to use
-    """
-    print(f"\nERROR: {message}\n", file=sys.stderr)
-    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
