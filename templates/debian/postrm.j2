@@ -1,0 +1,25 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    purge)
+        # Remove configuration directory and all contents
+        rm -rf {{ paths.etc }}
+
+        # Remove service file
+        rm -f {{ paths.systemd }}/{{ package.name }}.service
+
+        # Reload systemd
+        systemctl daemon-reload || true
+        ;;
+
+    remove)
+        # On remove (not purge), keep config but remove application files
+        # Application files in /var/lib/ are already removed by dpkg
+        # Service file is kept for potential reinstall
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
