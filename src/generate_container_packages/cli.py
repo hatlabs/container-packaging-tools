@@ -130,7 +130,7 @@ def main() -> int:
         logger.error(f"Template rendering failed: {e}")
         print(f"\nERROR: Template rendering failed\n", file=sys.stderr)
         print(str(e), file=sys.stderr)
-        if hasattr(args, "debug") and args.debug:
+        if args.debug:
             traceback.print_exc()
         return EXIT_TEMPLATE_ERROR
 
@@ -138,7 +138,7 @@ def main() -> int:
         logger.error(f"Package build failed: {e}")
         print(f"\nERROR: Package build failed\n", file=sys.stderr)
         print(str(e), file=sys.stderr)
-        if hasattr(args, "debug") and args.debug:
+        if args.debug:
             traceback.print_exc()
         return EXIT_BUILD_ERROR
 
@@ -150,7 +150,7 @@ def main() -> int:
         logger.error(f"Unexpected error: {e}")
         print(f"\nERROR: Unexpected error\n", file=sys.stderr)
         print(str(e), file=sys.stderr)
-        if hasattr(args, "debug") and (args.debug or (hasattr(args, "verbose") and args.verbose)):
+        if args.debug or args.verbose:
             traceback.print_exc()
         return EXIT_BUILD_ERROR
 
