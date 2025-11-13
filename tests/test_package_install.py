@@ -95,7 +95,7 @@ def built_package(tmp_path_factory):
 
     # Cleanup: ensure package is removed after tests
     try:
-        run_command("sudo dpkg -r simple-test-app-container", check=False)
+        run_command(["sudo", "dpkg", "-r", "simple-test-app-container"], check=False)
     except Exception:
         # Ignore errors during cleanup; package may not be installed or already removed
         pass
@@ -107,18 +107,18 @@ class TestPackageInstallation:
     def test_package_installs_successfully(self, built_package):
         """Test that generated package installs without errors."""
         # Install package
-        result = run_command(f"sudo dpkg -i {built_package}")
+        result = run_command(["sudo", "dpkg", "-i", str(built_package)])
         assert result.returncode == 0
 
         # Verify package is installed
-        result = run_command("dpkg -l simple-test-app-container")
+        result = run_command(["dpkg", "-l", "simple-test-app-container"])
         assert result.returncode == 0
         assert "simple-test-app-container" in result.stdout
 
     def test_installed_file_locations(self, built_package):
         """Test that files are installed to correct locations."""
         # Ensure package is installed
-        run_command(f"sudo dpkg -i {built_package}", check=False)
+        run_command(["sudo", "dpkg", "-i", str(built_package)], check=False)
 
         # Check application files
         app_dir = Path("/var/lib/container-apps/simple-test-app-container")
@@ -143,13 +143,13 @@ class TestPackageInstallation:
     def test_systemd_service_unit_valid(self, built_package):
         """Test that systemd service unit is valid."""
         # Ensure package is installed
-        run_command(f"sudo dpkg -i {built_package}", check=False)
+        run_command(["sudo", "dpkg", "-i", str(built_package)], check=False)
 
         # Reload systemd to pick up new service
-        run_command("sudo systemctl daemon-reload")
+        run_command(["sudo", "systemctl", "daemon-reload"])
 
         # Verify systemd recognizes the service
-        result = run_command("systemctl list-unit-files simple-test-app-container.service")
+        result = run_command(["systemctl", "list-unit-files", "simple-test-app-container.service"])
         assert "simple-test-app-container.service" in result.stdout
 
         # Note: We don't start the service because it requires Docker
@@ -158,10 +158,10 @@ class TestPackageInstallation:
     def test_package_removal_preserves_config(self, built_package):
         """Test that package removal preserves configuration."""
         # Ensure package is installed
-        run_command(f"sudo dpkg -i {built_package}", check=False)
+        run_command(["sudo", "dpkg", "-i", str(built_package)], check=False)
 
         # Remove package (not purge)
-        run_command("sudo dpkg -r simple-test-app-container")
+        run_command(["sudo", "dpkg", "-r", "simple-test-app-container"])
 
         # Note: This test verifies package removal succeeds
         # Config preservation behavior depends on debian/conffiles configuration
@@ -171,13 +171,13 @@ class TestPackageInstallation:
     def test_package_purge_removes_all_files(self, built_package):
         """Test that package purge removes all files."""
         # Ensure package is installed
-        run_command(f"sudo dpkg -i {built_package}", check=False)
+        run_command(["sudo", "dpkg", "-i", str(built_package)], check=False)
 
         # Purge package
-        run_command("sudo dpkg -P simple-test-app-container")
+        run_command(["sudo", "dpkg", "-P", "simple-test-app-container"])
 
         # Verify package is not installed
-        result = run_command("dpkg -l simple-test-app-container", check=False)
+        result = run_command(["dpkg", "-l", "simple-test-app-container"], check=False)
         # dpkg -l shows 'pn' (purged, not installed) or returns error
         # Assert package is not in installed state
         assert "ii  simple-test-app-container" not in result.stdout, (
@@ -218,7 +218,7 @@ class TestPackageWithIcon:
         # Cleanup
         try:
             # Get actual package name from full-app metadata
-            run_command("sudo dpkg -r full-test-app-container", check=False)
+            run_command(["sudo", "dpkg", "-r", "full-test-app-container"], check=False)
         except Exception:
             # Ignore errors during cleanup; package may not be installed
             pass
@@ -226,7 +226,7 @@ class TestPackageWithIcon:
     def test_icon_installed(self, built_package_with_icon):
         """Test that icon is installed to correct location."""
         # Install package
-        run_command(f"sudo dpkg -i {built_package_with_icon}", check=False)
+        run_command(["sudo", "dpkg", "-i", str(built_package_with_icon)], check=False)
 
         # Note: Icon installation location verification requires knowing exact package name
         # and icon filename from full-app metadata. Test verifies package installs successfully
@@ -239,27 +239,27 @@ class TestMaintainerScripts:
     def test_postinst_executes_without_error(self, built_package):
         """Test that postinst script executes successfully."""
         # Installation process runs postinst
-        result = run_command(f"sudo dpkg -i {built_package}", check=False)
+        result = run_command(["sudo", "dpkg", "-i", str(built_package)], check=False)
         # If installation succeeds, postinst succeeded
         assert result.returncode == 0
 
     def test_prerm_executes_without_error(self, built_package):
         """Test that prerm script executes successfully."""
         # Ensure installed
-        run_command(f"sudo dpkg -i {built_package}", check=False)
+        run_command(["sudo", "dpkg", "-i", str(built_package)], check=False)
 
         # Remove triggers prerm
-        result = run_command("sudo dpkg -r simple-test-app-container", check=False)
+        result = run_command(["sudo", "dpkg", "-r", "simple-test-app-container"], check=False)
         # If removal succeeds, prerm succeeded
         assert result.returncode == 0
 
     def test_postrm_executes_without_error(self, built_package):
         """Test that postrm script executes successfully."""
         # Ensure installed
-        run_command(f"sudo dpkg -i {built_package}", check=False)
+        run_command(["sudo", "dpkg", "-i", str(built_package)], check=False)
 
         # Purge triggers postrm
-        result = run_command("sudo dpkg -P simple-test-app-container", check=False)
+        result = run_command(["sudo", "dpkg", "-P", "simple-test-app-container"], check=False)
         # If purge succeeds, postrm succeeded
         assert result.returncode == 0
 
@@ -270,10 +270,10 @@ class TestPackageMetadata:
     def test_package_info(self, built_package):
         """Test that package metadata is correct."""
         # Install package
-        run_command(f"sudo dpkg -i {built_package}", check=False)
+        run_command(["sudo", "dpkg", "-i", str(built_package)], check=False)
 
         # Get package info
-        result = run_command("dpkg -s simple-test-app-container")
+        result = run_command(["dpkg", "-s", "simple-test-app-container"])
         output = result.stdout
 
         # Verify metadata
@@ -286,10 +286,10 @@ class TestPackageMetadata:
     def test_package_files_list(self, built_package):
         """Test that installed files list is correct."""
         # Install package
-        run_command(f"sudo dpkg -i {built_package}", check=False)
+        run_command(["sudo", "dpkg", "-i", str(built_package)], check=False)
 
         # List installed files
-        result = run_command("dpkg -L simple-test-app-container")
+        result = run_command(["dpkg", "-L", "simple-test-app-container"])
         output = result.stdout
 
         # Verify key files are listed
@@ -308,37 +308,37 @@ class TestServiceWithDocker:
     def test_service_can_start(self, built_package):
         """Test that service can be started with Docker available."""
         # Install package
-        run_command(f"sudo dpkg -i {built_package}", check=False)
+        run_command(["sudo", "dpkg", "-i", str(built_package)], check=False)
 
         # Reload systemd
-        run_command("sudo systemctl daemon-reload")
+        run_command(["sudo", "systemctl", "daemon-reload"])
 
         # Try to start service
         # Note: This may fail if Docker is not running or if the container
         # image is not available. We're mainly testing that the service
         # unit is properly configured and systemd can attempt to start it.
         run_command(
-            "sudo systemctl start simple-test-app-container.service", check=False
+            ["sudo", "systemctl", "start", "simple-test-app-container.service"], check=False
         )
 
         # Check if systemd recognized the service (command runs without error)
         run_command(
-            "systemctl status simple-test-app-container.service", check=False
+            ["systemctl", "status", "simple-test-app-container.service"], check=False
         )
 
         # Cleanup: stop service if it started
-        run_command("sudo systemctl stop simple-test-app-container.service", check=False)
+        run_command(["sudo", "systemctl", "stop", "simple-test-app-container.service"], check=False)
 
     def test_service_can_stop(self, built_package):
         """Test that service can be stopped."""
         # Install and try to start
-        run_command(f"sudo dpkg -i {built_package}", check=False)
-        run_command("sudo systemctl daemon-reload")
-        run_command("sudo systemctl start simple-test-app-container.service", check=False)
+        run_command(["sudo", "dpkg", "-i", str(built_package)], check=False)
+        run_command(["sudo", "systemctl", "daemon-reload"])
+        run_command(["sudo", "systemctl", "start", "simple-test-app-container.service"], check=False)
 
         # Stop service
         result = run_command(
-            "sudo systemctl stop simple-test-app-container.service", check=False
+            ["sudo", "systemctl", "stop", "simple-test-app-container.service"], check=False
         )
         # Should succeed even if service wasn't running
         assert result.returncode == 0
@@ -350,17 +350,17 @@ class TestReinstallation:
     def test_package_can_be_reinstalled(self, built_package):
         """Test that package can be installed, removed, and reinstalled."""
         # First installation
-        run_command(f"sudo dpkg -i {built_package}")
+        run_command(["sudo", "dpkg", "-i", str(built_package)])
 
         # Remove
-        run_command("sudo dpkg -r simple-test-app-container")
+        run_command(["sudo", "dpkg", "-r", "simple-test-app-container"])
 
         # Reinstall
-        result = run_command(f"sudo dpkg -i {built_package}")
+        result = run_command(["sudo", "dpkg", "-i", str(built_package)])
         assert result.returncode == 0
 
         # Verify installed
-        result = run_command("dpkg -l simple-test-app-container")
+        result = run_command(["dpkg", "-l", "simple-test-app-container"])
         assert "simple-test-app-container" in result.stdout
 
 
@@ -370,10 +370,10 @@ class TestUpgrade:
     def test_package_can_be_upgraded(self, built_package):
         """Test that package can be upgraded (reinstalled with same version)."""
         # Install
-        run_command(f"sudo dpkg -i {built_package}")
+        run_command(["sudo", "dpkg", "-i", str(built_package)])
 
         # "Upgrade" by reinstalling same version
-        result = run_command(f"sudo dpkg -i {built_package}")
+        result = run_command(["sudo", "dpkg", "-i", str(built_package)])
         assert result.returncode == 0
 
         # In a real scenario, we would build a newer version and test upgrade
