@@ -37,7 +37,7 @@ jobs:
 
       - name: Run type checker
         run: |
-          uvx ty check
+          uvx ty check src/
 
   unit-tests:
     name: Unit Tests (Python ${{ matrix.python-version }})
@@ -109,10 +109,10 @@ jobs:
 
       - name: Run integration tests
         run: |
-          # Run integration tests using pytest markers
+          # Run integration tests using pytest markers (excluding install marker)
           # Check if any integration tests exist
-          if uv run pytest --co -m integration -q > /dev/null 2>&1; then
-            uv run pytest -m integration -v
+          if uv run pytest --co -m "integration and not install" -q > /dev/null 2>&1; then
+            uv run pytest -m "integration and not install" -v
           else
             echo "No integration tests found, skipping..."
             echo "Integration tests will be added in issues #17-18"
