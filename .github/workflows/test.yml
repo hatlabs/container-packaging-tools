@@ -37,7 +37,11 @@ jobs:
 
       - name: Run type checker
         run: |
-          uvx ty check || uv run mypy src/
+          if command -v ty >/dev/null 2>&1; then
+            uvx ty check
+          else
+            uv run mypy src/
+          fi
 
   unit-tests:
     name: Unit Tests (Python ${{ matrix.python-version }})
@@ -64,7 +68,7 @@ jobs:
 
       - name: Run unit tests with coverage
         run: |
-          uv run pytest tests/test_*.py -k "not integration" \
+          uv run pytest tests/test_*.py -m "not integration" \
             --cov=src \
             --cov-report=term-missing \
             --cov-report=xml \
@@ -74,6 +78,7 @@ jobs:
         if: matrix.python-version == '3.11'
         uses: codecov/codecov-action@v4
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
@@ -108,9 +113,9 @@ jobs:
 
       - name: Run integration tests
         run: |
-          # Run integration tests if they exist, otherwise skip
-          if ls tests/test_integration*.py 1> /dev/null 2>&1; then
-            uv run pytest tests/test_integration*.py -v
+          # Run integration tests using pytest markers
+          if uv run pytest --co -q -m integration 2>&1 | grep -q "test session starts"; then
+            uv run pytest -m integration -v
           else
             echo "No integration tests found, skipping..."
             echo "Integration tests will be added in issues #17-18"
@@ -171,8 +176,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y python3-pip python3-venv
-          sudo dpkg -i *.deb || true
-          sudo apt-get install -f -y
+          if ! sudo dpkg -i *.deb; then
+            echo "dpkg failed, attempting to fix dependencies..."
+            sudo apt-get install -f -y
+            echo "Retrying dpkg installation..."
+            sudo dpkg -i *.deb
+          fi
 
       - name: Verify installation
         run: |
