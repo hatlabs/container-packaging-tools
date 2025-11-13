@@ -166,23 +166,18 @@ jobs:
     name: Test Package Installation
     runs-on: ubuntu-latest
     needs: build-package
+    container:
+      image: debian:trixie
     steps:
       - name: Download package artifacts
         uses: actions/download-artifact@v4
         with:
           name: debian-packages
 
-      - name: Install package dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-jinja2 python3-yaml dpkg-dev
-          # Install pydantic v2 since Ubuntu doesn't have it
-          # Use --ignore-installed to avoid conflict with Debian's typing-extensions
-          sudo pip3 install --break-system-packages --ignore-installed 'pydantic>=2.0'
-
       - name: Install package
         run: |
-          sudo dpkg -i *.deb
+          apt-get update
+          dpkg -i *.deb || apt-get install -f -y
 
       - name: Verify installation
         run: |
