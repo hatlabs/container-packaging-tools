@@ -64,7 +64,7 @@ pip install -e .[dev]
 pytest
 
 # Type checking
-mypy src/
+uvx ty check src/
 
 # Linting
 ruff check src/
@@ -78,4 +78,4 @@ ruff check src/
 
 ## License
 
-TBD
+MIT License - see [debian/copyright](debian/copyright) for details
