@@ -94,7 +94,7 @@ container-packaging-tools/
 ## Development
 
 **Tech Stack**:
-- Python 3.9+ (targeting Debian stable)
+- Python 3.11+ (targeting Debian stable)
 - Pydantic v2 for data validation
 - Jinja2 for templating
 - PyYAML for YAML parsing
@@ -108,43 +108,59 @@ container-packaging-tools/
 
 **Quick Start with Run Script**:
 
-The `./run` script provides convenient commands for common development tasks:
+The `./run` script provides convenient commands for common development tasks.
 
+**IMPORTANT: All development commands run in Docker containers**
+
+First, build the development container:
 ```bash
-./run dev:setup      # Install development dependencies
+./run docker:build   # Build the Debian Trixie development container
+```
+
+Then use Docker-based commands for all development tasks:
+```bash
+# Testing
+./run test           # Run all tests in Docker
+./run test:coverage  # Run tests with coverage report (80% required)
+./run test:unit      # Run unit tests only
+./run test:integration  # Run integration tests only
+
+# Code Quality
 ./run check          # Run all quality checks (lint, format, typecheck)
-./run test           # Run all tests
-./run test:coverage  # Run tests with coverage
-./run build          # Build Debian package
-./run dev:clean      # Clean build artifacts
+./run lint           # Run ruff linter
+./run lint:fix       # Run linter with auto-fix
+./run format         # Format code with ruff
+./run format:check   # Check formatting without changes
+./run typecheck      # Run ty type checker
+
+# Building
+./run build          # Build Debian package in Docker
+
+# Docker Management
+./run docker:shell   # Open interactive shell in container
+./run docker:clean   # Remove Docker containers and images
+
+# Utilities
 ./run help           # Show all available commands
 ```
 
-**Manual Setup**:
+**Why Docker?**
+- Tests require `dpkg-buildpackage` which is not available on all systems (especially macOS)
+- Ensures consistent Debian Trixie environment across all developers
+- Prevents "works on my machine" issues
+- All CI/CD runs in the same Docker environment
+
+**Local Development** (without Docker):
+If you want to run tests locally (e.g., for faster iteration), you'll need:
 ```bash
-# Using pip
-pip install -e .[dev]
+# Debian/Ubuntu only - install build tools
+sudo apt install dpkg-dev debhelper dh-python python3-all
 
-# Or using uv (recommended)
-uv pip install -e .[dev]
-```
+# Install dependencies
+uv sync --dev
 
-**Manual Testing**:
-```bash
-# Run tests
-pytest
-
-# With coverage
-pytest --cov=src
-
-# Linting and formatting
-ruff check src/
-ruff format --check src/
-
-# Type checking
-uvx ty check
-# or
-mypy src/
+# Run tests locally (will fail on non-Debian systems)
+uv run pytest
 ```
 
 **Code Quality**:
@@ -155,13 +171,18 @@ mypy src/
 
 ## Building the Package
 
-Once implemented, the tool will be packaged as a Debian package:
+The tool is packaged as a Debian package using Docker:
 
+```bash
+./run build   # Builds in Docker with dpkg-buildpackage
+```
+
+Or manually in a Debian/Ubuntu environment:
 ```bash
 dpkg-buildpackage -us -uc
 ```
 
-The resulting package will be installable on Debian 12+ and Raspberry Pi OS.
+The resulting package will be installable on Debian 12+ (Trixie) and Raspberry Pi OS.
 
 ## Related
 
