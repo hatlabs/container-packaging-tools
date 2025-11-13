@@ -151,7 +151,9 @@ class PackageMetadata(BaseModel):
             )
             # Check for warnings in stderr (indicates bad syntax)
             # dpkg prints warnings like "version 'v1.0' has bad syntax"
-            if result.stderr and ("bad syntax" in result.stderr or "error" in result.stderr.lower()):
+            if result.stderr and (
+                "bad syntax" in result.stderr or "error" in result.stderr.lower()
+            ):
                 raise ValueError(
                     f"Invalid Debian version format: '{v}'. "
                     "Version must be valid according to Debian policy. "
@@ -168,6 +170,7 @@ class PackageMetadata(BaseModel):
             # If dpkg is not available or times out, do basic validation
             # Allow alphanumeric, dots, dashes, plus signs, tildes, and colons
             import re
+
             if not re.match(r"^[0-9][0-9a-zA-Z.+~:-]*$", v):
                 raise ValueError(
                     f"Invalid version format: '{v}'. "
