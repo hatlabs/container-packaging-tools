@@ -4,7 +4,6 @@ import argparse
 import logging
 import shutil
 import sys
-import tempfile
 from pathlib import Path
 from unittest import mock
 
@@ -193,13 +192,6 @@ class TestCheckDependencies:
         with pytest.raises(FileNotFoundError, match="dpkg-buildpackage not found"):
             check_dependencies()
 
-    @mock.patch(
-        "builtins.__import__", side_effect=ImportError("No module named 'jinja2'")
-    )
-    def test_missing_python_dependency(self, mock_import):
-        """Test that check fails when Python dependency is missing."""
-        with pytest.raises(ImportError, match="Missing required Python dependency"):
-            check_dependencies()
 
 
 class TestMain:

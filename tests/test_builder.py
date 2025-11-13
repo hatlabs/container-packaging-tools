@@ -1,6 +1,5 @@
 """Unit tests for builder module."""
 
-import shutil
 import subprocess
 from pathlib import Path
 from unittest import mock

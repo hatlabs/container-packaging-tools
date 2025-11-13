@@ -2,7 +2,6 @@
 
 import subprocess
 import sys
-from pathlib import Path
 
 
 def test_main_entry_point():
