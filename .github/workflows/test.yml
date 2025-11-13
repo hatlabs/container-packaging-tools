@@ -142,11 +142,13 @@ jobs:
       - name: Install Debian build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y dpkg-dev debhelper dh-python python3-all python3-setuptools pybuild-plugin-pyproject python3-pydantic python3-jinja2 python3-yaml
+          sudo apt-get install -y dpkg-dev debhelper dh-python python3-all python3-setuptools pybuild-plugin-pyproject python3-jinja2 python3-yaml build-essential
+          # Install pydantic v2 via pip since Ubuntu's python3-pydantic is too old
+          sudo pip3 install --break-system-packages 'pydantic>=2.0'
 
       - name: Build Debian package
         run: |
-          dpkg-buildpackage -us -uc -b
+          dpkg-buildpackage -us -uc -b -d
 
       - name: List built packages
         run: |
