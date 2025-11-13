@@ -61,11 +61,21 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def built_package(tmp_path_factory):
     """Build a test package once for all tests in this module."""
+    from generate_container_packages.validator import validate_input_directory
+    from generate_container_packages.loader import load_input_files
+    from generate_container_packages.renderer import render_all_templates
+
     fixture_dir = Path("tests/fixtures/valid/simple-app")
     output_dir = tmp_path_factory.mktemp("packages")
+    render_dir = tmp_path_factory.mktemp("rendered")
+
+    # Validate, load, and render
+    validate_input_directory(fixture_dir)
+    app_def = load_input_files(fixture_dir)
+    render_all_templates(app_def, render_dir)
 
     # Build package
-    deb_path = build_package(fixture_dir, output_dir)
+    deb_path = build_package(app_def, render_dir, output_dir)
 
     yield deb_path
 
@@ -174,10 +184,21 @@ class TestPackageWithIcon:
     @pytest.fixture(scope="class")
     def built_package_with_icon(self, tmp_path_factory):
         """Build full-app package with icon."""
+        from generate_container_packages.validator import validate_input_directory
+        from generate_container_packages.loader import load_input_files
+        from generate_container_packages.renderer import render_all_templates
+
         fixture_dir = Path("tests/fixtures/valid/full-app")
         output_dir = tmp_path_factory.mktemp("packages_icon")
+        render_dir = tmp_path_factory.mktemp("rendered_icon")
 
-        deb_path = build_package(fixture_dir, output_dir)
+        # Validate, load, and render
+        validate_input_directory(fixture_dir)
+        app_def = load_input_files(fixture_dir)
+        render_all_templates(app_def, render_dir)
+
+        # Build package
+        deb_path = build_package(app_def, render_dir, output_dir)
 
         yield deb_path
 
