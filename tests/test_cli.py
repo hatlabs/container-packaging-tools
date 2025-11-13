@@ -134,7 +134,7 @@ class TestCreateArgumentParser:
         parser = create_argument_parser()
         with pytest.raises(SystemExit) as exc_info:
             parser.parse_args(["--version"])
-        assert exc_info.value.code == 0
+        assert exc_info.value.code == 0  # type: ignore[attr-defined]
 
 
 class TestSetupLogging:
@@ -257,7 +257,7 @@ class TestMain:
     def test_validation_error_during_load(self, mock_load, capsys):
         """Test handling of ValidationError during file loading."""
         input_dir = str(VALID_FIXTURES / "simple-app")
-        mock_load.side_effect = ValidationError.from_exception_data(
+        mock_load.side_effect = ValidationError.from_exception_data(  # type: ignore[arg-type]
             "TestModel",
             [
                 {

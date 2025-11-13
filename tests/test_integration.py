@@ -233,6 +233,7 @@ class TestEndToEndPipeline:
         # At this point, dpkg-buildpackage would be called
         # We don't call it in unit tests since it requires Debian environment
 
+    @pytest.mark.install
     @pytest.mark.skipif(
         shutil.which("dpkg-buildpackage") is None,
         reason="dpkg-buildpackage not available",
