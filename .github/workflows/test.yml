@@ -108,7 +108,13 @@ jobs:
 
       - name: Run integration tests
         run: |
-          uv run pytest tests/test_integration*.py -v
+          # Run integration tests if they exist, otherwise skip
+          if ls tests/test_integration*.py 1> /dev/null 2>&1; then
+            uv run pytest tests/test_integration*.py -v
+          else
+            echo "No integration tests found, skipping..."
+            echo "Integration tests will be added in issues #17-18"
+          fi
 
   build-package:
     name: Build Debian Package
