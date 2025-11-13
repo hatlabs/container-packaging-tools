@@ -37,7 +37,7 @@ jobs:
 
       - name: Run type checker
         run: |
-          uv run mypy src/
+          uvx ty check
 
   unit-tests:
     name: Unit Tests (Python ${{ matrix.python-version }})
