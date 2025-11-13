@@ -8,11 +8,11 @@ Tooling for generating Debian packages from container application definitions.
 
 ## Requirements
 
-- **Debian 12 (Trixie) or newer** - Required for Python 3.11+ and Pydantic v2.0+
+- **Debian 13 (Trixie, current stable) or newer** - Required for Python 3.11+ and Pydantic v2.0+
 - **Raspberry Pi OS** (Trixie-based) is also supported
 - **Ubuntu 24.04+** or other Debian-based distributions with compatible package versions
 
-Note: Older distributions like Ubuntu 22.04 do not have Pydantic v2.0+ available in their repositories.
+Note: Older distributions like Ubuntu 22.04 or Debian 12 (Bookworm) do not have Pydantic v2.0+ available in their repositories.
 
 ## Installation
 
