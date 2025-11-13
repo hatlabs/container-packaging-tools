@@ -144,7 +144,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y dpkg-dev debhelper dh-python python3-all python3-setuptools pybuild-plugin-pyproject python3-jinja2 python3-yaml build-essential
           # Install pydantic v2 via pip since Ubuntu's python3-pydantic is too old
-          sudo pip3 install --break-system-packages 'pydantic>=2.0'
+          sudo pip3 install --break-system-packages --ignore-installed 'pydantic>=2.0'
 
       - name: Build Debian package
         run: |
