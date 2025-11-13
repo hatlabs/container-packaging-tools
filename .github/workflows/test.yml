@@ -122,6 +122,8 @@ jobs:
     name: Build Debian Package
     runs-on: ubuntu-latest
     needs: [quality, unit-tests, integration-tests]
+    # Disabled until issue #19 (debian/ directory creation) is complete
+    if: false
     steps:
       - uses: actions/checkout@v4
 
@@ -163,6 +165,8 @@ jobs:
     name: Test Package Installation
     runs-on: ubuntu-latest
     needs: build-package
+    # Disabled until issue #19 (debian/ directory creation) is complete
+    if: false
     steps:
       - name: Download package artifacts
         uses: actions/download-artifact@v4
