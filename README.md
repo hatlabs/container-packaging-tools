@@ -63,7 +63,7 @@ pip install -e .[dev]
 # Run tests
 pytest
 
-# Type checking
+# Type checking (using ty, a fast Rust-based type checker)
 uvx ty check src/
 
 # Linting
