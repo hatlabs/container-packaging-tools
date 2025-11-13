@@ -87,8 +87,11 @@ debian/.debhelper/
 debian/files
 debian/*.substvars
 debian/*.log
+debian/*.debhelper
+debian/debhelper-build-stamp
 debian/tmp/
-debian/generate-container-packages/
+debian/container-packaging-tools/
+.pybuild/
 
 # Build directories
 *.build/

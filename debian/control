@@ -1,0 +1,40 @@
+Source: container-packaging-tools
+Section: devel
+Priority: optional
+Maintainer: Hat Labs <info@hatlabs.fi>
+Build-Depends: debhelper-compat (= 13),
+ dh-python,
+ python3-all,
+ python3-setuptools,
+ pybuild-plugin-pyproject,
+ python3-pydantic (>= 2.0),
+ python3-jinja2,
+ python3-yaml
+Standards-Version: 4.6.2
+Homepage: https://github.com/hatlabs/container-packaging-tools
+Vcs-Git: https://github.com/hatlabs/container-packaging-tools.git
+Vcs-Browser: https://github.com/hatlabs/container-packaging-tools
+
+Package: container-packaging-tools
+Architecture: all
+Depends: ${misc:Depends},
+ ${python3:Depends},
+ python3-pydantic (>= 2.0),
+ python3-jinja2,
+ python3-yaml,
+ dpkg-dev
+Description: Generate Debian packages from container application definitions
+ container-packaging-tools is a command-line tool that converts simple
+ container app definitions into full-fledged Debian packages. It eliminates
+ the need for package maintainers to understand Debian packaging internals.
+ .
+ Features:
+  - Template-based generation using Jinja2
+  - Input validation with JSON schemas
+  - Consistent package structure across all apps
+  - Support for Docker Compose orchestration
+  - Systemd service integration
+ .
+ The tool reads docker-compose.yml, config.yml, and metadata.json from
+ application directories and generates complete Debian package structures
+ ready for building with dpkg-buildpackage.

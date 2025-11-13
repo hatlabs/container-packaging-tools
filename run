@@ -47,7 +47,7 @@ function dev:clean {
   #@ Category: Development
   echo "🧹 Cleaning..."
   rm -rf build/ dist/ *.egg-info
-  rm -rf .pytest_cache .ruff_cache .mypy_cache htmlcov/
+  rm -rf .pytest_cache .ruff_cache .ty_cache htmlcov/
   rm -rf debian/.debhelper debian/container-packaging-tools debian/files debian/*.substvars
   rm -f ../*.deb ../*.buildinfo ../*.changes
   find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
@@ -186,8 +186,8 @@ function build {
   #@ Category: Build
   echo "🏗️  Building Debian package..."
   docker compose -f docker/docker-compose.devtools.yml run --rm devtools \
-    bash -c "uv sync --dev && dpkg-buildpackage -us -uc"
-  echo "✅ Build complete"
+    bash -c "uv sync --dev && dpkg-buildpackage -us -uc -b"
+  echo "✅ Build complete - package at ./container-packaging-tools_0.1.0_all.deb"
 }
 
 ################################################################################

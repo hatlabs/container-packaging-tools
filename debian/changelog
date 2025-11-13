@@ -1,0 +1,10 @@
+container-packaging-tools (0.1.0) unstable; urgency=medium
+
+  * Initial release
+  * Template-based Debian package generation from container apps
+  * Support for Docker Compose orchestration
+  * Pydantic-based input validation
+  * Jinja2 templating for package files
+  * Systemd service integration
+
+ -- Hat Labs <info@hatlabs.fi>  Thu, 13 Nov 2025 20:00:00 +0000

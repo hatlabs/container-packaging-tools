@@ -1,0 +1,22 @@
+#!/usr/bin/make -f
+
+export PYBUILD_NAME=generate-container-packages
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+override_dh_auto_install:
+	dh_auto_install
+	# Install templates to /usr/share/container-packaging-tools/
+	mkdir -p debian/container-packaging-tools/usr/share/container-packaging-tools
+	cp -r templates debian/container-packaging-tools/usr/share/container-packaging-tools/
+
+override_dh_builddeb:
+	dh_builddeb --destdir=.
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf build/ dist/ *.egg-info
+	rm -rf .pytest_cache .ruff_cache htmlcov/
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete
