@@ -61,9 +61,9 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def built_package(tmp_path_factory):
     """Build a test package once for all tests in this module."""
-    from generate_container_packages.validator import validate_input_directory
     from generate_container_packages.loader import load_input_files
     from generate_container_packages.renderer import render_all_templates
+    from generate_container_packages.validator import validate_input_directory
 
     fixture_dir = Path("tests/fixtures/valid/simple-app")
     output_dir = tmp_path_factory.mktemp("packages")
@@ -149,12 +149,12 @@ class TestPackageInstallation:
         run_command("sudo dpkg -r simple-test-app-container")
 
         # Check that config is preserved
-        config_dir = Path("/etc/container-apps/simple-test-app-container")
+        Path("/etc/container-apps/simple-test-app-container")
         # Note: dpkg may or may not preserve config on remove depending on conffiles
         # This behavior is controlled by debian/conffiles
 
         # Application files should be removed
-        app_dir = Path("/var/lib/container-apps/simple-test-app-container")
+        Path("/var/lib/container-apps/simple-test-app-container")
         # May or may not exist depending on maintainer scripts
 
     def test_package_purge_removes_all_files(self, built_package):
@@ -166,15 +166,15 @@ class TestPackageInstallation:
         run_command("sudo dpkg -P simple-test-app-container")
 
         # Verify package is not installed
-        result = run_command("dpkg -l simple-test-app-container", check=False)
+        run_command("dpkg -l simple-test-app-container", check=False)
         # dpkg -l shows 'pn' (purged, not installed) or returns error
 
         # Application files should be removed
-        app_dir = Path("/var/lib/container-apps/simple-test-app-container")
+        Path("/var/lib/container-apps/simple-test-app-container")
         # Should be removed by postrm script
 
         # Service file should be removed
-        service_file = Path("/etc/systemd/system/simple-test-app-container.service")
+        Path("/etc/systemd/system/simple-test-app-container.service")
         # Should be removed
 
 
@@ -184,9 +184,9 @@ class TestPackageWithIcon:
     @pytest.fixture(scope="class")
     def built_package_with_icon(self, tmp_path_factory):
         """Build full-app package with icon."""
-        from generate_container_packages.validator import validate_input_directory
         from generate_container_packages.loader import load_input_files
         from generate_container_packages.renderer import render_all_templates
+        from generate_container_packages.validator import validate_input_directory
 
         fixture_dir = Path("tests/fixtures/valid/full-app")
         output_dir = tmp_path_factory.mktemp("packages_icon")
@@ -217,7 +217,7 @@ class TestPackageWithIcon:
         # Check icon location
         # Icon should be in /usr/share/pixmaps or similar
         # Exact location depends on template implementation
-        pixmaps_dir = Path("/usr/share/pixmaps")
+        Path("/usr/share/pixmaps")
         # Look for icon file (name depends on package)
 
 
@@ -305,7 +305,7 @@ class TestServiceWithDocker:
         # Note: This may fail if Docker is not running or if the container
         # image is not available. We're mainly testing that the service
         # unit is properly configured.
-        result = run_command(
+        run_command(
             "sudo systemctl start simple-test-app-container.service", check=False
         )
 
@@ -313,7 +313,7 @@ class TestServiceWithDocker:
         # But we can check if systemd tried to start it
 
         # Check service status
-        status_result = run_command(
+        run_command(
             "systemctl status simple-test-app-container.service", check=False
         )
 
