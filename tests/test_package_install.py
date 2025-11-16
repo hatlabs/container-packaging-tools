@@ -149,10 +149,11 @@ class TestPackageInstallation:
 
         # Check AppStream metadata (optional - may not be installed in all cases)
         # Note: AppStream support is work in progress, not critical for package installation
-        metainfo_file = Path(
-            "/usr/share/metainfo/com.example.simple-test-app-container.metainfo.xml"
-        )
-        # assert metainfo_file.exists()  # TODO: Re-enable when AppStream fully implemented
+        # TODO: Re-enable when AppStream fully implemented
+        # metainfo_file = Path(
+        #     "/usr/share/metainfo/com.example.simple-test-app-container.metainfo.xml"
+        # )
+        # assert metainfo_file.exists()
 
     @pytest.mark.skipif(
         not has_systemd(), reason="Requires systemd (not available in containers)"
