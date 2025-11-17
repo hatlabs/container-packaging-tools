@@ -1,24 +1,21 @@
 #!/bin/bash
-# Build Debian package (.deb)
-# Installs build dependencies and builds the package
+# Build Debian package (.deb) in devtools container
+# Container has all build dependencies pre-installed
 
 set -e
 
-echo "Installing build dependencies..."
-sudo apt-get update -qq
-sudo apt-get install -y -qq \
-  build-essential dpkg-dev debhelper dh-python \
-  pybuild-plugin-pyproject \
-  python3-all python3-setuptools \
-  python3-pydantic python3-jinja2 python3-yaml
+echo "Building Debian package in Debian trixie container..."
 
-echo "Building Debian package..."
-
-# Build the package
-dpkg-buildpackage -b -uc -us
+# Build the package inside devtools container
+# dpkg-buildpackage writes to .. by convention, so we move files back after
+docker run --rm \
+  -v "$(pwd):/workspace" \
+  -w /workspace \
+  devtools:latest \
+  bash -c "dpkg-buildpackage -b -uc -us && mv ../*.deb ../*.buildinfo ../*.changes ./ 2>/dev/null || true"
 
 # List generated packages
 echo "📦 Generated packages:"
-ls -lh ../*.deb
+ls -lh *.deb
 
 echo "✅ Package build complete"
