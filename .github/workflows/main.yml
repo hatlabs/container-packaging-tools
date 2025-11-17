@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 env:
-  APT_DISTRO: ${{ vars.APT_DISTRO || 'any' }}
+  APT_DISTRO: ${{ vars.APT_DISTRO || 'trixie' }}
   APT_COMPONENT: ${{ vars.APT_COMPONENT || 'main' }}
 
 jobs:
