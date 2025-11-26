@@ -6,7 +6,7 @@ from URLs with retry logic, size validation, and parallel downloads.
 
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -297,8 +297,12 @@ class TestImageValidation:
 class TestDownloadIcon:
     """Test icon download functionality."""
 
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager._download_file")
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager._validate_image")
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager._download_file"
+    )
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager._validate_image"
+    )
     def test_download_icon_success(
         self,
         mock_validate: Mock,
@@ -323,7 +327,9 @@ class TestDownloadIcon:
         # Verify tracked in context
         assert str(result) in conversion_context.downloaded_assets
 
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager._download_file")
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager._download_file"
+    )
     def test_download_icon_download_fails(
         self,
         mock_download: Mock,
@@ -342,8 +348,12 @@ class TestDownloadIcon:
         assert len(conversion_context.warnings) > 0
         assert "icon" in conversion_context.warnings[0].lower()
 
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager._download_file")
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager._validate_image")
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager._download_file"
+    )
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager._validate_image"
+    )
     def test_download_icon_validation_fails(
         self,
         mock_validate: Mock,
@@ -384,8 +394,12 @@ class TestDownloadIcon:
 class TestDownloadScreenshots:
     """Test screenshot download functionality."""
 
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager._download_file")
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager._validate_image")
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager._download_file"
+    )
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager._validate_image"
+    )
     def test_download_screenshots_success(
         self,
         mock_validate: Mock,
@@ -412,8 +426,12 @@ class TestDownloadScreenshots:
         # Verify all tracked in context
         assert len(conversion_context.downloaded_assets) == 3
 
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager._download_file")
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager._validate_image")
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager._download_file"
+    )
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager._validate_image"
+    )
     def test_download_screenshots_partial_failure(
         self,
         mock_validate: Mock,
@@ -440,8 +458,12 @@ class TestDownloadScreenshots:
         # Verify warning for failed download
         assert len(conversion_context.warnings) > 0
 
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager._download_file")
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager._validate_image")
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager._download_file"
+    )
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager._validate_image"
+    )
     def test_download_screenshots_parallel(
         self,
         mock_validate: Mock,
@@ -491,8 +513,12 @@ class TestDownloadScreenshots:
 class TestDownloadAllAssets:
     """Test downloading all assets for an app."""
 
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager.download_icon")
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager.download_screenshots")
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager.download_icon"
+    )
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager.download_screenshots"
+    )
     def test_download_all_assets_complete(
         self,
         mock_download_screenshots: Mock,
@@ -523,8 +549,12 @@ class TestDownloadAllAssets:
         assert result["icon"] is not None
         assert len(result["screenshots"]) == 2
 
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager.download_icon")
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager.download_screenshots")
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager.download_icon"
+    )
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager.download_screenshots"
+    )
     def test_download_all_assets_no_icon(
         self,
         mock_download_screenshots: Mock,
@@ -549,8 +579,12 @@ class TestDownloadAllAssets:
         assert len(result["screenshots"]) == 1
         mock_download_icon.assert_not_called()
 
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager.download_icon")
-    @patch("generate_container_packages.converters.casaos.assets.AssetManager.download_screenshots")
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager.download_icon"
+    )
+    @patch(
+        "generate_container_packages.converters.casaos.assets.AssetManager.download_screenshots"
+    )
     def test_download_all_assets_total_size_limit(
         self,
         mock_download_screenshots: Mock,
@@ -570,7 +604,7 @@ class TestDownloadAllAssets:
         mock_download_icon.return_value = icon_path
         mock_download_screenshots.return_value = [screenshot_path]
 
-        result = asset_manager.download_all_assets(
+        _result = asset_manager.download_all_assets(
             icon_url="https://example.com/icon.png",
             screenshot_urls=["https://example.com/screen.png"],
             app_id="myapp",
