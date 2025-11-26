@@ -1,0 +1,45 @@
+name: nginx-test
+services:
+  nginx:
+    image: nginx:1.25
+    restart: unless-stopped
+    ports:
+      - target: 80
+        published: "${WEBUI_PORT}"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /DATA/AppData/$AppID/html
+        target: /usr/share/nginx/html
+    environment:
+      TZ: $TZ
+    x-casaos:
+      envs:
+        - container: TZ
+          description:
+            en_us: Timezone
+      ports:
+        - container: "80"
+          description:
+            en_us: Web UI port
+      volumes:
+        - container: /usr/share/nginx/html
+          description:
+            en_us: HTML content directory
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: nginx
+  author: self
+  category: Utilities
+  description:
+    en_us: Simple nginx web server for testing
+  tagline:
+    en_us: Web server
+  developer: nginx
+  icon: https://example.com/nginx-icon.png
+  screenshot_link:
+    - https://example.com/nginx-screenshot.png
+  port_map: "${WEBUI_PORT}"
