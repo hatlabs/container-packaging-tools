@@ -1,0 +1,28 @@
+id: test-full
+name: Full Test Store
+description: A fully-featured test store with all fields
+
+icon: /usr/share/container-stores/test/icon.svg
+banner: /usr/share/container-stores/test/banner.png
+
+filters:
+  include_origins:
+    - "Hat Labs"
+    - "Test Origin"
+  include_sections:
+    - net
+    - web
+  include_tags:
+    - field::marine
+    - role::container-app
+  include_packages:
+    - test-package-container
+
+category_metadata:
+  - id: navigation
+    label: Navigation
+    icon: MapIcon
+    description: Navigation tools
+  - id: monitoring
+    label: Monitoring
+    icon: ChartIcon

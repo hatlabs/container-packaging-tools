@@ -1,0 +1,8 @@
+id: test-bad
+name: Bad Store - Missing Origins
+description: This store is invalid because it has no origins
+filters:
+  include_sections:
+    - net
+  include_tags:
+    - field::marine

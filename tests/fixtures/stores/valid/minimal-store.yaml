@@ -1,0 +1,6 @@
+id: test-minimal
+name: Minimal Test Store
+description: A minimal test store with only required fields
+filters:
+  include_origins:
+    - "Hat Labs"
