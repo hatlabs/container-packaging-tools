@@ -132,8 +132,12 @@ class TestCategoryMapping:
 
     def test_case_sensitive_mapping(self, transformer: MetadataTransformer) -> None:
         """Test category mapping is case-sensitive."""
-        assert transformer._map_category("entertainment") == "misc"  # lowercase should not match
-        assert transformer._map_category("ENTERTAINMENT") == "misc"  # uppercase should not match
+        assert (
+            transformer._map_category("entertainment") == "misc"
+        )  # lowercase should not match
+        assert (
+            transformer._map_category("ENTERTAINMENT") == "misc"
+        )  # uppercase should not match
 
 
 class TestFieldTypeInference:
@@ -389,35 +393,45 @@ class TestFieldTypeInference:
         assert validation.get("min") == 1024  # PORT validation, not generic integer
         assert group == "network"
 
-    def test_fallback_to_casaos_type_number(self, transformer: MetadataTransformer) -> None:
+    def test_fallback_to_casaos_type_number(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test fallback to CasaOS type hint for number."""
         env_var = CasaOSEnvVar(name="SOME_VALUE", default="42", type="number")
         field_type, validation, group = transformer._infer_field_type(env_var)
 
         assert field_type == "integer"
 
-    def test_fallback_to_casaos_type_text(self, transformer: MetadataTransformer) -> None:
+    def test_fallback_to_casaos_type_text(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test fallback to CasaOS type hint for text."""
         env_var = CasaOSEnvVar(name="SOME_TEXT", default="value", type="text")
         field_type, validation, group = transformer._infer_field_type(env_var)
 
         assert field_type == "string"
 
-    def test_fallback_to_casaos_type_password(self, transformer: MetadataTransformer) -> None:
+    def test_fallback_to_casaos_type_password(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test fallback to CasaOS type hint for password."""
         env_var = CasaOSEnvVar(name="SOME_SECRET_VALUE", default="", type="password")
         field_type, validation, group = transformer._infer_field_type(env_var)
 
         assert field_type == "password"
 
-    def test_fallback_to_casaos_type_boolean(self, transformer: MetadataTransformer) -> None:
+    def test_fallback_to_casaos_type_boolean(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test fallback to CasaOS type hint for boolean."""
         env_var = CasaOSEnvVar(name="SOME_FLAG", default="true", type="boolean")
         field_type, validation, group = transformer._infer_field_type(env_var)
 
         assert field_type == "boolean"
 
-    def test_fallback_to_string_when_no_type(self, transformer: MetadataTransformer) -> None:
+    def test_fallback_to_string_when_no_type(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test fallback to string when no pattern matches and no type hint."""
         env_var = CasaOSEnvVar(name="RANDOM_VAR", default="value", type=None)
         field_type, validation, group = transformer._infer_field_type(env_var)
@@ -428,12 +442,16 @@ class TestFieldTypeInference:
 class TestPathTransformation:
     """Test path transformation from CasaOS to HaLOS conventions."""
 
-    def test_appdata_path_with_trailing_slash(self, transformer: MetadataTransformer) -> None:
+    def test_appdata_path_with_trailing_slash(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test /DATA/AppData/{app}/ transforms to ${CONTAINER_DATA_ROOT}/."""
         result = transformer._transform_path("/DATA/AppData/nginx/", "nginx")
         assert result == "${CONTAINER_DATA_ROOT}/"
 
-    def test_appdata_path_without_trailing_slash(self, transformer: MetadataTransformer) -> None:
+    def test_appdata_path_without_trailing_slash(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test /DATA/AppData/{app} transforms to ${CONTAINER_DATA_ROOT}."""
         result = transformer._transform_path("/DATA/AppData/nginx", "nginx")
         assert result == "${CONTAINER_DATA_ROOT}"
@@ -443,7 +461,9 @@ class TestPathTransformation:
         result = transformer._transform_path("/DATA/AppData/nginx/config", "nginx")
         assert result == "${CONTAINER_DATA_ROOT}/config"
 
-    def test_generic_data_prefix_removal(self, transformer: MetadataTransformer) -> None:
+    def test_generic_data_prefix_removal(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test /DATA/ prefix is removed."""
         result = transformer._transform_path("/DATA/media", "app")
         assert result == "/media"
@@ -488,7 +508,9 @@ class TestPathTransformation:
         result = transformer._transform_path("/books", "app")
         assert result == "/media/books"
 
-    def test_downloads_directory_preserved(self, transformer: MetadataTransformer) -> None:
+    def test_downloads_directory_preserved(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test /downloads is preserved."""
         result = transformer._transform_path("/downloads", "app")
         assert result == "/downloads"
@@ -528,7 +550,9 @@ class TestPathTransformation:
         result = transformer._transform_path("/proc", "app")
         assert result == "/proc"
 
-    def test_unmapped_path_gets_data_root(self, transformer: MetadataTransformer) -> None:
+    def test_unmapped_path_gets_data_root(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test unmapped paths get ${CONTAINER_DATA_ROOT} prepended."""
         result = transformer._transform_path("/custom/path", "app")
         assert result == "${CONTAINER_DATA_ROOT}/custom/path"
@@ -538,12 +562,16 @@ class TestPathTransformation:
         result = transformer._transform_path("/DATA/AppData/{app}/config", "myapp")
         assert result == "${CONTAINER_DATA_ROOT}/config"
 
-    def test_app_id_variable_substitution(self, transformer: MetadataTransformer) -> None:
+    def test_app_id_variable_substitution(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test {app_id} variable is replaced with app_id."""
         result = transformer._transform_path("/DATA/AppData/{app_id}/config", "myapp")
         assert result == "${CONTAINER_DATA_ROOT}/config"
 
-    def test_case_sensitivity_in_app_name(self, transformer: MetadataTransformer) -> None:
+    def test_case_sensitivity_in_app_name(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test app name replacement is case-sensitive."""
         result = transformer._transform_path("/DATA/AppData/MyApp/config", "myapp")
         # Should not match because case doesn't match
@@ -561,12 +589,12 @@ class TestPackageNaming:
     def test_name_with_spaces(self, transformer: MetadataTransformer) -> None:
         """Test spaces are replaced with hyphens."""
         result = transformer._generate_package_name("Signal K")
-        assert result == "casaos-signalk-container"
+        assert result == "casaos-signal-k-container"
 
     def test_name_with_multiple_spaces(self, transformer: MetadataTransformer) -> None:
         """Test multiple spaces are collapsed to single hyphen."""
         result = transformer._generate_package_name("My  Cool  App")
-        assert result == "casaos-mycoolapp-container"
+        assert result == "casaos-my-cool-app-container"
 
     def test_name_with_special_chars(self, transformer: MetadataTransformer) -> None:
         """Test special characters are replaced with hyphens."""
@@ -593,17 +621,23 @@ class TestPackageNaming:
         result = transformer._generate_package_name("app-")
         assert result == "casaos-app-container"
 
-    def test_name_with_consecutive_hyphens(self, transformer: MetadataTransformer) -> None:
+    def test_name_with_consecutive_hyphens(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test consecutive hyphens are collapsed."""
         result = transformer._generate_package_name("my--app")
         assert result == "casaos-my-app-container"
 
-    def test_casaos_prefix_always_present(self, transformer: MetadataTransformer) -> None:
+    def test_casaos_prefix_always_present(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test casaos- prefix is always added."""
         result = transformer._generate_package_name("test")
         assert result.startswith("casaos-")
 
-    def test_container_suffix_always_present(self, transformer: MetadataTransformer) -> None:
+    def test_container_suffix_always_present(
+        self, transformer: MetadataTransformer
+    ) -> None:
         """Test -container suffix is always added."""
         result = transformer._generate_package_name("test")
         assert result.endswith("-container")
@@ -631,7 +665,10 @@ class TestTransformerIntegration:
         assert metadata["name"] == "Nginx Test"
         assert metadata["package_name"] == "casaos-nginx-test-container"
         assert metadata["debian_section"] == "utils"  # Utilities → utils
-        assert metadata["description"] == "Simple nginx web server for testing"
+        assert (
+            metadata["description"] == "Web server"
+        )  # Uses tagline for short description
+        assert metadata["long_description"] == "Simple nginx web server for testing"
 
         # Check config structure
         config = result["config"]
