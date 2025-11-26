@@ -92,15 +92,19 @@ class TestDownloadFile:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.content = mock_png_content
-        mock_response.headers = {"content-length": str(len(mock_png_content))}
+        mock_response.headers = {
+            "content-length": str(len(mock_png_content)),
+            "content-type": "image/png",
+        }
         mock_get.return_value = mock_response
 
         dest_path = output_dir / "test.png"
-        result = asset_manager._download_file(
+        success, content_type = asset_manager._download_file(
             "https://example.com/icon.png", dest_path, timeout=30, max_size_mb=5
         )
 
-        assert result is True
+        assert success is True
+        assert content_type == "image/png"
         assert dest_path.exists()
         assert dest_path.read_bytes() == mock_png_content
         mock_get.assert_called_once()
@@ -120,7 +124,10 @@ class TestDownloadFile:
         mock_response_success = Mock()
         mock_response_success.status_code = 200
         mock_response_success.content = mock_png_content
-        mock_response_success.headers = {"content-length": str(len(mock_png_content))}
+        mock_response_success.headers = {
+            "content-length": str(len(mock_png_content)),
+            "content-type": "image/png",
+        }
 
         mock_get.side_effect = [
             requests.RequestException("Network error"),
@@ -129,11 +136,12 @@ class TestDownloadFile:
         ]
 
         dest_path = output_dir / "test.png"
-        result = asset_manager._download_file(
+        success, content_type = asset_manager._download_file(
             "https://example.com/icon.png", dest_path, timeout=30, max_size_mb=5
         )
 
-        assert result is True
+        assert success is True
+        assert content_type == "image/png"
         assert dest_path.exists()
         assert mock_get.call_count == 3
         # Verify exponential backoff: sleep(1), sleep(2)
@@ -154,11 +162,12 @@ class TestDownloadFile:
         mock_get.side_effect = requests.RequestException("Network error")
 
         dest_path = output_dir / "test.png"
-        result = asset_manager._download_file(
+        success, content_type = asset_manager._download_file(
             "https://example.com/icon.png", dest_path, timeout=30, max_size_mb=5
         )
 
-        assert result is False
+        assert success is False
+        assert content_type is None
         assert not dest_path.exists()
         # 1 initial attempt + 3 retries = 4 total
         assert mock_get.call_count == 4
@@ -174,11 +183,12 @@ class TestDownloadFile:
         mock_get.side_effect = requests.Timeout("Timeout")
 
         dest_path = output_dir / "test.png"
-        result = asset_manager._download_file(
+        success, content_type = asset_manager._download_file(
             "https://example.com/icon.png", dest_path, timeout=30, max_size_mb=5
         )
 
-        assert result is False
+        assert success is False
+        assert content_type is None
         mock_get.assert_called()
         # Verify timeout was passed to requests.get
         call_kwargs = mock_get.call_args[1]
@@ -200,14 +210,15 @@ class TestDownloadFile:
         mock_get.return_value = mock_response
 
         dest_path = output_dir / "test.png"
-        result = asset_manager._download_file(
+        success, content_type = asset_manager._download_file(
             "https://example.com/icon.png",
             dest_path,
             timeout=30,
             max_size_mb=5,  # 5MB limit
         )
 
-        assert result is False
+        assert success is False
+        assert content_type is None
         # File might be created but should be cleaned up
         if dest_path.exists():
             assert dest_path.stat().st_size == 0 or not dest_path.exists()
@@ -226,11 +237,12 @@ class TestDownloadFile:
         mock_get.return_value = mock_response
 
         dest_path = output_dir / "test.png"
-        result = asset_manager._download_file(
+        success, content_type = asset_manager._download_file(
             "https://example.com/icon.png", dest_path, timeout=30, max_size_mb=5
         )
 
-        assert result is False
+        assert success is False
+        assert content_type is None
         assert not dest_path.exists()
 
 
@@ -312,7 +324,7 @@ class TestDownloadIcon:
         conversion_context: ConversionContext,
     ) -> None:
         """Test successful icon download."""
-        mock_download.return_value = True
+        mock_download.return_value = (True, "image/png")
         mock_validate.return_value = True
 
         result = asset_manager.download_icon(
@@ -337,7 +349,7 @@ class TestDownloadIcon:
         conversion_context: ConversionContext,
     ) -> None:
         """Test icon download failure adds warning."""
-        mock_download.return_value = False
+        mock_download.return_value = (False, None)
 
         result = asset_manager.download_icon(
             "https://example.com/icon.png", "myapp", conversion_context
@@ -362,7 +374,7 @@ class TestDownloadIcon:
         conversion_context: ConversionContext,
     ) -> None:
         """Test icon validation failure adds warning."""
-        mock_download.return_value = True
+        mock_download.return_value = (True, "image/png")
         mock_validate.return_value = False
 
         result = asset_manager.download_icon(
@@ -380,7 +392,9 @@ class TestDownloadIcon:
         conversion_context: ConversionContext,
     ) -> None:
         """Test icon download creates app directory structure."""
-        with patch.object(asset_manager, "_download_file", return_value=True):
+        with patch.object(
+            asset_manager, "_download_file", return_value=(True, "image/png")
+        ):
             with patch.object(asset_manager, "_validate_image", return_value=True):
                 asset_manager.download_icon(
                     "https://example.com/icon.png", "myapp", conversion_context
@@ -409,7 +423,7 @@ class TestDownloadScreenshots:
         conversion_context: ConversionContext,
     ) -> None:
         """Test successful screenshots download."""
-        mock_download.return_value = True
+        mock_download.return_value = (True, "image/png")
         mock_validate.return_value = True
 
         urls = [
@@ -441,7 +455,11 @@ class TestDownloadScreenshots:
     ) -> None:
         """Test partial screenshot download failure."""
         # First succeeds, second fails, third succeeds
-        mock_download.side_effect = [True, False, True]
+        mock_download.side_effect = [
+            (True, "image/png"),
+            (False, None),
+            (True, "image/png"),
+        ]
         mock_validate.return_value = True
 
         urls = [
@@ -478,7 +496,7 @@ class TestDownloadScreenshots:
         def slow_download(*args, **kwargs):
             call_times.append(time.time())
             time.sleep(0.1)  # Simulate download time
-            return True
+            return (True, "image/png")
 
         mock_download.side_effect = slow_download
         mock_validate.return_value = True
