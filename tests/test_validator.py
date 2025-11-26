@@ -11,6 +11,7 @@ from generate_container_packages.validator import (
     validate_config,
     validate_input_directory,
     validate_metadata,
+    validate_store,
 )
 
 # Test fixtures directory
@@ -312,3 +313,75 @@ class TestIntegration:
                 assert len(result.errors) > 0, (
                     f"Fixture {fixture_dir.name} should have errors"
                 )
+
+
+class TestValidateStore:
+    """Tests for validate_store function."""
+
+    def test_valid_minimal_store(self):
+        """Test validation of minimal store with only required fields."""
+        store_path = VALID_FIXTURES / "stores" / "minimal-store.yaml"
+        store = validate_store(store_path)
+
+        assert store.id == "test-minimal"
+        assert store.name == "Minimal Test Store"
+        assert store.filters.include_origins == ["Hat Labs"]
+        assert store.filters.include_sections == []
+        assert store.filters.include_tags == []
+
+    def test_valid_full_store(self):
+        """Test validation of full-featured store."""
+        store_path = VALID_FIXTURES / "stores" / "full-store.yaml"
+        store = validate_store(store_path)
+
+        assert store.id == "test-full"
+        assert store.name == "Full Test Store"
+        assert "Hat Labs" in store.filters.include_origins
+        assert "Test Origin" in store.filters.include_origins
+        assert "net" in store.filters.include_sections
+        assert "field::marine" in store.filters.include_tags
+        assert len(store.category_metadata) == 2
+        assert store.category_metadata[0].id == "navigation"
+        assert store.icon == "/usr/share/container-stores/test/icon.svg"
+
+    def test_missing_origins_fails(self):
+        """Test that store without origins fails validation."""
+        from pydantic import ValidationError
+
+        store_path = INVALID_FIXTURES / "stores" / "missing-origins.yaml"
+
+        with pytest.raises(ValidationError) as exc_info:
+            validate_store(store_path)
+
+        errors = exc_info.value.errors()
+        # Should have error about missing required field
+        assert any("include_origins" in str(e.get("loc")) for e in errors)
+
+    def test_empty_origins_fails(self):
+        """Test that store with empty origins list fails validation."""
+        from pydantic import ValidationError
+
+        store_path = INVALID_FIXTURES / "stores" / "empty-origins.yaml"
+
+        with pytest.raises(ValidationError) as exc_info:
+            validate_store(store_path)
+
+        errors = exc_info.value.errors()
+        # Should have error about min_length constraint
+        assert any(
+            "include_origins" in str(e.get("loc")) and "at least 1 item" in str(e.get("msg"))
+            for e in errors
+        )
+
+    def test_bad_store_id_fails(self):
+        """Test that store with invalid ID format fails validation."""
+        from pydantic import ValidationError
+
+        store_path = INVALID_FIXTURES / "stores" / "bad-store-id.yaml"
+
+        with pytest.raises(ValidationError) as exc_info:
+            validate_store(store_path)
+
+        errors = exc_info.value.errors()
+        # Should have error about id pattern
+        assert any("id" in str(e.get("loc")) for e in errors)

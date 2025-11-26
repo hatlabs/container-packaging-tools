@@ -1,0 +1,6 @@
+id: Bad_Store_ID
+name: Bad Store ID
+description: This store has an invalid ID with uppercase and underscores
+filters:
+  include_origins:
+    - "Hat Labs"

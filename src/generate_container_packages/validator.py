@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from schemas.config import ConfigSchema
 from schemas.metadata import PackageMetadata
+from schemas.store import StoreConfig
 
 
 class ValidationWarning(NamedTuple):
@@ -182,6 +183,25 @@ def validate_compose(path: Path) -> dict[str, Any]:
         raise ValueError("docker-compose.yml has no services defined")
 
     return data
+
+
+def validate_store(path: Path) -> StoreConfig:
+    """Validate container store definition file.
+
+    Args:
+        path: Path to store YAML file (e.g., marine.yaml)
+
+    Returns:
+        Validated StoreConfig object
+
+    Raises:
+        ValidationError: If validation fails
+        yaml.YAMLError: If YAML is invalid
+    """
+    with open(path, encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    return StoreConfig.model_validate(data)
 
 
 def check_compose_warnings(compose: dict[str, Any]) -> list[ValidationWarning]:

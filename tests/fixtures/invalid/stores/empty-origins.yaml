@@ -1,0 +1,5 @@
+id: test-empty
+name: Bad Store - Empty Origins
+description: This store is invalid because origins list is empty
+filters:
+  include_origins: []
