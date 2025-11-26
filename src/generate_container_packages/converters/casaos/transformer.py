@@ -31,18 +31,57 @@ class MetadataTransformer:
         Args:
             mappings_dir: Directory containing mapping YAML files
                 (categories.yaml, field_types.yaml, paths.yaml)
+
+        Raises:
+            FileNotFoundError: If mapping directory or required files don't exist
+            ValueError: If mapping files contain invalid YAML or missing required keys
         """
         self.mappings_dir = Path(mappings_dir)
 
-        # Load mapping files
-        with open(self.mappings_dir / "categories.yaml") as f:
-            self._category_data = yaml.safe_load(f)
+        # Verify mappings directory exists
+        if not self.mappings_dir.exists():
+            raise FileNotFoundError(
+                f"Mappings directory not found: {self.mappings_dir}\n"
+                f"Expected directory with categories.yaml, field_types.yaml, and paths.yaml"
+            )
 
-        with open(self.mappings_dir / "field_types.yaml") as f:
-            self._field_type_data = yaml.safe_load(f)
+        # Load mapping files with error handling
+        required_files = ["categories.yaml", "field_types.yaml", "paths.yaml"]
+        for filename in required_files:
+            filepath = self.mappings_dir / filename
+            if not filepath.exists():
+                raise FileNotFoundError(
+                    f"Required mapping file not found: {filepath}\n"
+                    f"Expected files in {self.mappings_dir}: {', '.join(required_files)}"
+                )
 
-        with open(self.mappings_dir / "paths.yaml") as f:
-            self._path_data = yaml.safe_load(f)
+        try:
+            with open(self.mappings_dir / "categories.yaml") as f:
+                self._category_data = yaml.safe_load(f)
+                if not isinstance(self._category_data, dict):
+                    raise ValueError("categories.yaml must contain a dictionary")
+                if "mappings" not in self._category_data:
+                    raise ValueError("categories.yaml must contain 'mappings' key")
+
+            with open(self.mappings_dir / "field_types.yaml") as f:
+                self._field_type_data = yaml.safe_load(f)
+                if not isinstance(self._field_type_data, dict):
+                    raise ValueError("field_types.yaml must contain a dictionary")
+                if "patterns" not in self._field_type_data:
+                    raise ValueError("field_types.yaml must contain 'patterns' key")
+
+            with open(self.mappings_dir / "paths.yaml") as f:
+                self._path_data = yaml.safe_load(f)
+                if not isinstance(self._path_data, dict):
+                    raise ValueError("paths.yaml must contain a dictionary")
+                if "transforms" not in self._path_data:
+                    raise ValueError("paths.yaml must contain 'transforms' key")
+
+        except yaml.YAMLError as e:
+            raise ValueError(
+                f"Invalid YAML in mapping file: {e}\n"
+                f"Check syntax in {self.mappings_dir}"
+            ) from e
 
         # Pre-compile regex patterns for field type inference
         self._compiled_patterns: list[dict[str, Any]] = []
@@ -61,15 +100,30 @@ class MetadataTransformer:
     ) -> dict[str, Any]:
         """Transform CasaOS app to HaLOS format.
 
+        This method generates dictionaries that conform to HaLOS schemas
+        but does NOT perform validation. The caller is responsible for
+        validating the output against PackageMetadata and ConfigSchema
+        using Pydantic models.
+
+        The returned dictionaries may be incomplete (missing required fields
+        like maintainer, license, version) as these are typically added by
+        the caller based on additional context not available in CasaOS metadata.
+
         Args:
             casaos_app: Parsed CasaOS application
             context: Conversion context for tracking warnings/errors
 
         Returns:
             Dictionary with keys:
-                - metadata: dict suitable for PackageMetadata validation
-                - config: dict suitable for ConfigSchema validation
+                - metadata: dict for PackageMetadata (requires additional fields)
+                - config: dict for ConfigSchema (should validate as-is)
                 - compose: dict with cleaned docker-compose (no x-casaos)
+
+        Note:
+            Validation responsibility:
+            - Caller must validate metadata dict with PackageMetadata.model_validate()
+            - Caller must validate config dict with ConfigSchema.model_validate()
+            - Caller should add missing required fields (maintainer, license, etc.)
         """
         # Generate package name
         package_name = self._generate_package_name(casaos_app.name)
@@ -216,24 +270,50 @@ class MetadataTransformer:
     def _transform_path(self, path: str, app_id: str) -> str:
         """Transform CasaOS path to HaLOS convention.
 
+        Path transformation follows this order:
+        1. Variable substitution ({app} and {app_id} → actual app_id)
+        2. Check preserved paths (system paths like /etc, /var, etc.)
+        3. Apply transformation rules (first match wins)
+        4. Default behavior (prepend ${CONTAINER_DATA_ROOT})
+
+        Note: Variables are substituted BEFORE checking preserved paths.
+        This means preserved path templates cannot contain {app} variables.
+        If you need templated preserved paths, add them after substitution.
+
+        Transformation rules are evaluated in order from the mappings file.
+        The first rule that matches is applied, subsequent rules are skipped.
+        Order matters - more specific rules should come before general ones.
+
         Args:
             path: CasaOS volume path (may contain {app} or {app_id} variables)
             app_id: Application identifier for variable substitution
 
         Returns:
             Transformed HaLOS path
+
+        Examples:
+            >>> _transform_path("/DATA/AppData/myapp/config", "myapp")
+            "${CONTAINER_DATA_ROOT}/config"
+
+            >>> _transform_path("/etc/nginx/nginx.conf", "myapp")
+            "/etc/nginx/nginx.conf"  # Preserved
+
+            >>> _transform_path("/custom/path", "myapp")
+            "${CONTAINER_DATA_ROOT}/custom/path"  # Default
         """
         # First, replace {app} or {app_id} variables in the incoming path
+        # This allows patterns like "/DATA/AppData/{app}/" to match actual paths
         path = path.replace("{app}", app_id)
         path = path.replace("{app_id}", app_id)
 
-        # Check if path should be preserved
+        # Check if path should be preserved (system paths like /etc, /var, etc.)
         preserved_paths = self._path_data.get("special_cases", {}).get("preserve", [])
         for preserved in preserved_paths:
             if path.startswith(preserved):
                 return path
 
-        # Apply transformation rules in order
+        # Apply transformation rules in order (FIRST MATCH WINS)
+        # More specific rules should be placed before general ones in paths.yaml
         transforms = self._path_data.get("transforms", [])
         for transform in transforms:
             from_pattern = transform["from"]
@@ -266,6 +346,9 @@ class MetadataTransformer:
 
         Returns:
             Debian-compatible package name: casaos-{app}-container
+
+        Raises:
+            ValueError: If generated package name would be invalid
         """
         # Convert to lowercase
         name = app_name.lower()
@@ -286,6 +369,26 @@ class MetadataTransformer:
 
         # Remove leading/trailing hyphens
         name = name.strip("-")
+
+        # Validate the generated name
+        if not name:
+            raise ValueError(
+                f"Cannot generate package name from empty app name: '{app_name}'"
+            )
+
+        if not name[0].isalnum():
+            raise ValueError(
+                f"Invalid package name generated: 'casaos-{name}-container'\n"
+                f"Debian package names must start with alphanumeric character.\n"
+                f"Original app name: '{app_name}'"
+            )
+
+        if len(name) < 2:
+            raise ValueError(
+                f"Invalid package name generated: 'casaos-{name}-container'\n"
+                f"Package name too short (minimum 2 characters).\n"
+                f"Original app name: '{app_name}'"
+            )
 
         # Add prefix and suffix
         return f"casaos-{name}-container"
