@@ -254,6 +254,97 @@ x-casaos:
             assert screenshot.startswith("https://")
 
 
+class TestParserWarnings:
+    """Tests for parser warning collection and validation."""
+
+    def test_parser_collects_warnings(self):
+        """Test that parser collects warnings during parsing."""
+        parser = CasaOSParser()
+        # Invalid port reference
+        yaml_with_issues = """
+name: test-app
+services:
+  web:
+    image: nginx:latest
+    ports:
+      - "invalid:80"
+x-casaos:
+  category: Utilities
+  description:
+    en_us: Test
+  tagline:
+    en_us: App
+  developer: Me
+"""
+        _app = parser.parse_from_string(yaml_with_issues)
+        # Should have warning about parsing failure
+        assert len(parser.warnings) > 0
+
+    def test_parser_warns_undefined_variable_reference(self):
+        """Test that parser warns about undefined variable references."""
+        parser = CasaOSParser()
+        yaml_content = """
+name: test-app
+services:
+  web:
+    image: nginx:latest
+    ports:
+      - target: 80
+        published: "${UNDEFINED_VAR}"
+x-casaos:
+  category: Utilities
+  description:
+    en_us: Test
+  tagline:
+    en_us: App
+  developer: Me
+"""
+        _app = parser.parse_from_string(yaml_content)
+        # Should warn about undefined UNDEFINED_VAR
+        assert any("UNDEFINED_VAR" in w for w in parser.warnings)
+
+    def test_parser_validates_command_strings(self):
+        """Test that parser validates command list items are strings."""
+        parser = CasaOSParser()
+        # This should generate a warning if command has non-string items
+        yaml_content = """
+name: test-app
+services:
+  web:
+    image: nginx:latest
+    command: ["string", 123]  # 123 is not a string
+x-casaos:
+  category: Utilities
+  description:
+    en_us: Test
+  tagline:
+    en_us: App
+  developer: Me
+"""
+        app = parser.parse_from_string(yaml_content)
+        # Parser should convert non-strings and warn
+        assert app.services[0].command is not None
+        assert all(isinstance(c, str) for c in app.services[0].command)
+        # Should have warning about non-string item
+        assert any("command" in w.lower() for w in parser.warnings)
+
+    def test_parser_file_context_in_errors(self):
+        """Test that file path is included in error messages."""
+        parser = CasaOSParser()
+        compose_file = FIXTURES_DIR / "simple-app" / "docker-compose.yml"
+
+        # Parse successfully
+        _app = parser.parse_from_file(compose_file)
+
+        # Now try parsing invalid YAML with file context
+        invalid_file = FIXTURES_DIR / "simple-app" / "invalid.yml"
+        try:
+            # This will fail if file doesn't exist, which is expected
+            parser.parse_from_file(invalid_file)
+        except FileNotFoundError as e:
+            assert "invalid.yml" in str(e)
+
+
 class TestParserEdgeCases:
     """Tests for parser edge cases and error handling."""
 

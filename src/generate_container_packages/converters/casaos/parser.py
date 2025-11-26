@@ -1,5 +1,6 @@
 """Parser for CasaOS docker-compose.yml files with x-casaos metadata."""
 
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -17,13 +18,23 @@ from generate_container_packages.converters.exceptions import (
     ValidationError as ConverterValidationError,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class CasaOSParser:
     """Parser for CasaOS application definitions.
 
     Parses docker-compose.yml files with x-casaos metadata extensions
     and converts them into CasaOSApp model instances.
+
+    Attributes:
+        warnings: List of non-fatal warnings encountered during parsing
     """
+
+    def __init__(self):
+        """Initialize parser."""
+        self.warnings: list[str] = []
+        self._current_file: Path | None = None
 
     def parse_from_file(self, compose_file: Path) -> CasaOSApp:
         """Parse a CasaOS app from a docker-compose.yml file.
@@ -41,8 +52,76 @@ class CasaOSParser:
         if not compose_file.exists():
             raise FileNotFoundError(f"Compose file not found: {compose_file}")
 
+        # Track file path for better error messages
+        self._current_file = compose_file
+        self.warnings.clear()  # Reset warnings for new parse
+
         yaml_content = compose_file.read_text()
-        return self.parse_from_string(yaml_content)
+        try:
+            return self.parse_from_string(yaml_content)
+        finally:
+            self._current_file = None
+
+    def _add_warning(self, message: str):
+        """Add a warning with optional file context.
+
+        Args:
+            message: Warning message
+        """
+        if self._current_file:
+            full_message = f"{self._current_file}: {message}"
+        else:
+            full_message = message
+        self.warnings.append(full_message)
+        logger.warning(full_message)
+
+    def _validate_string_list(self, value: Any, context: str) -> list[str] | None:
+        """Validate and normalize a value to a list of strings.
+
+        Args:
+            value: Value to validate (can be str, list, or None)
+            context: Context description for error messages
+
+        Returns:
+            List of strings, or None if value is None
+        """
+        if value is None:
+            return None
+
+        if isinstance(value, str):
+            return [value]
+
+        if isinstance(value, list):
+            # Validate all items are strings
+            result = []
+            for i, item in enumerate(value):
+                if not isinstance(item, str):
+                    self._add_warning(
+                        f"Non-string item at index {i} in {context}: {type(item).__name__}. "
+                        f"Converting to string."
+                    )
+                result.append(str(item))
+            return result
+
+        # Unexpected type
+        self._add_warning(
+            f"Unexpected type for {context}: {type(value).__name__}. "
+            f"Expected string or list. Converting to string."
+        )
+        return [str(value)]
+
+    def _error_context(self, message: str) -> str:
+        """Add file context to error message.
+
+        Args:
+            message: Error message
+
+        Returns:
+            Error message with file context if available
+        """
+        if self._current_file:
+            return f"{message} in {self._current_file}"
+        return message
 
     def parse_from_string(self, yaml_content: str) -> CasaOSApp:
         """Parse a CasaOS app from YAML string content.
@@ -59,10 +138,10 @@ class CasaOSParser:
         try:
             data = yaml.safe_load(yaml_content)
         except yaml.YAMLError as e:
-            raise ConverterValidationError(f"Invalid YAML syntax: {e}") from e
+            raise ConverterValidationError(self._error_context(f"Invalid YAML syntax: {e}")) from e
 
         if not isinstance(data, dict):
-            raise ConverterValidationError("Docker compose file must be a YAML dictionary")
+            raise ConverterValidationError(self._error_context("Docker compose file must be a YAML dictionary"))
 
         return self._parse_compose_data(data)
 
@@ -81,17 +160,17 @@ class CasaOSParser:
         # Extract app name from 'name' field
         app_name = data.get("name")
         if not app_name:
-            raise ConverterValidationError("Missing required 'name' field in compose file")
+            raise ConverterValidationError(self._error_context("Missing required 'name' field"))
 
         # Extract x-casaos metadata
         x_casaos = data.get("x-casaos")
         if not x_casaos:
-            raise ConverterValidationError("Missing required 'x-casaos' metadata in compose file")
+            raise ConverterValidationError(self._error_context("Missing required 'x-casaos' metadata"))
 
         # Extract services
         services_data = data.get("services", {})
         if not services_data:
-            raise ConverterValidationError("Missing or empty 'services' in compose file")
+            raise ConverterValidationError(self._error_context("Missing or empty 'services'"))
 
         # Parse services
         services = []
@@ -140,26 +219,33 @@ class CasaOSParser:
             service_x_casaos.get("envs", [])
         )
 
+        # Build set of defined environment variables for validation
+        env_var_names = {env.name for env in env_vars}
+
         # Parse ports
         ports = self._parse_ports(
             service_config.get("ports", []),
-            service_x_casaos.get("ports", [])
+            service_x_casaos.get("ports", []),
+            env_var_names
         )
 
         # Parse volumes
         volumes = self._parse_volumes(
             service_config.get("volumes", []),
-            service_x_casaos.get("volumes", [])
+            service_x_casaos.get("volumes", []),
+            env_var_names
         )
 
-        # Parse command and entrypoint
-        command = service_config.get("command")
-        if command and not isinstance(command, list):
-            command = [str(command)]
+        # Parse command and entrypoint with validation
+        command = self._validate_string_list(
+            service_config.get("command"),
+            f"command in service '{service_name}'"
+        )
 
-        entrypoint = service_config.get("entrypoint")
-        if entrypoint and not isinstance(entrypoint, list):
-            entrypoint = [str(entrypoint)]
+        entrypoint = self._validate_string_list(
+            service_config.get("entrypoint"),
+            f"entrypoint in service '{service_name}'"
+        )
 
         return CasaOSService(
             name=service_name,
@@ -223,13 +309,15 @@ class CasaOSParser:
     def _parse_ports(
         self,
         ports_config: list[Any],
-        ports_metadata: list[dict[str, Any]]
+        ports_metadata: list[dict[str, Any]],
+        env_var_names: set[str]
     ) -> list[CasaOSPort]:
         """Parse port mappings with their metadata.
 
         Args:
             ports_config: Ports section from compose
             ports_metadata: Ports metadata from x-casaos
+            env_var_names: Set of defined environment variable names for validation
 
         Returns:
             List of CasaOSPort instances
@@ -246,7 +334,9 @@ class CasaOSParser:
                     port_num = int(container_port)
                     metadata_lookup[port_num] = item
                 except (ValueError, TypeError):
-                    pass
+                    self._add_warning(
+                        f"Failed to convert port metadata container value to int: {container_port}"
+                    )
 
         # Parse each port mapping
         for port_config in ports_config:
@@ -263,23 +353,44 @@ class CasaOSParser:
                     if "/" in container_str:
                         container_str, protocol = container_str.split("/")
                     try:
-                        host_port = int(host_str) if host_str and not host_str.startswith("$") else None
-                        container_port = int(container_str) if not container_str.startswith("$") else None
-                    except ValueError:
-                        pass
+                        # Handle variable references
+                        if host_str and host_str.startswith("${") and host_str.endswith("}"):
+                            var_name = host_str[2:-1]
+                            if var_name not in env_var_names:
+                                self._add_warning(f"Port references undefined variable: {var_name}")
+                            host_port = None
+                        elif host_str:
+                            host_port = int(host_str)
+
+                        if container_str.startswith("${") and container_str.endswith("}"):
+                            var_name = container_str[2:-1]
+                            if var_name not in env_var_names:
+                                self._add_warning(f"Port references undefined variable: {var_name}")
+                            container_port = None
+                        else:
+                            container_port = int(container_str)
+                    except ValueError as e:
+                        self._add_warning(f"Failed to parse port mapping '{port_config}': {e}")
             elif isinstance(port_config, dict):
                 # Dict format: {target: X, published: Y, protocol: Z}
                 try:
                     container_port = int(port_config.get("target", 0))
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    self._add_warning(f"Failed to parse port target: {port_config.get('target')} - {e}")
 
                 published = port_config.get("published")
-                if published and not str(published).startswith("$"):
-                    try:
-                        host_port = int(published)
-                    except (ValueError, TypeError):
-                        pass
+                if published:
+                    pub_str = str(published)
+                    if pub_str.startswith("${") and pub_str.endswith("}"):
+                        var_name = pub_str[2:-1]
+                        if var_name not in env_var_names:
+                            self._add_warning(f"Port references undefined variable: {var_name}")
+                        host_port = None
+                    else:
+                        try:
+                            host_port = int(published)
+                        except (ValueError, TypeError) as e:
+                            self._add_warning(f"Failed to parse published port: {published} - {e}")
 
                 protocol = port_config.get("protocol")
 
@@ -296,19 +407,24 @@ class CasaOSParser:
                     description=self._extract_multilingual(metadata.get("description")),
                 )
                 ports.append(port)
+            else:
+                # Port config was skipped
+                self._add_warning(f"Skipping unparseable port configuration: {port_config}")
 
         return ports
 
     def _parse_volumes(
         self,
         volumes_config: list[Any],
-        volumes_metadata: list[dict[str, Any]]
+        volumes_metadata: list[dict[str, Any]],
+        env_var_names: set[str]
     ) -> list[CasaOSVolume]:
         """Parse volume mounts with their metadata.
 
         Args:
             volumes_config: Volumes section from compose
             volumes_metadata: Volumes metadata from x-casaos
+            env_var_names: Set of defined environment variable names for validation
 
         Returns:
             List of CasaOSVolume instances
@@ -353,6 +469,9 @@ class CasaOSParser:
                     description=self._extract_multilingual(metadata.get("description")),
                 )
                 volumes.append(volume)
+            else:
+                # Volume config was skipped
+                self._add_warning(f"Skipping incomplete volume configuration: {volume_config}")
 
         return volumes
 
