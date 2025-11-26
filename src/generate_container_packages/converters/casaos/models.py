@@ -6,6 +6,7 @@ The models support flexible validation to handle undocumented fields
 while ensuring required data is present.
 """
 
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -40,7 +41,7 @@ class CasaOSPort(BaseModel):
 
     container: int = Field(ge=1, le=65535, description="Container port number")
     host: int = Field(ge=1, le=65535, description="Host port number")
-    protocol: str | None = Field(None, description="Protocol (tcp or udp)")
+    protocol: Literal["tcp", "udp"] | None = Field(None, description="Protocol (tcp or udp)")
     description: str | None = Field(None, description="Port description")
 
 

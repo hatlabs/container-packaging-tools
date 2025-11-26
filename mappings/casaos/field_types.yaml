@@ -15,16 +15,11 @@
 # (Must match ConfigField types in schemas/config.py)
 
 # Type inference patterns (evaluated in order)
+# Note: Patterns use [A-Z0-9_]* instead of .* to match only valid
+# environment variable characters and avoid overly greedy matches
 patterns:
   # Port numbers - must come before general number patterns
-  - pattern: ".*PORT$"
-    type: integer
-    validation:
-      min: 1024
-      max: 65535
-    group: network
-
-  - pattern: ".*_PORT$"
+  - pattern: "^[A-Z0-9_]*_?PORT$"
     type: integer
     validation:
       min: 1024
@@ -32,123 +27,50 @@ patterns:
     group: network
 
   # Network and protocol settings
-  - pattern: ".*HOST$"
+  - pattern: "^[A-Z0-9_]*_?HOST(NAME)?$"
     type: string
     group: network
 
-  - pattern: ".*_HOST$"
+  - pattern: "^[A-Z0-9_]*_?URL$"
     type: string
     group: network
 
-  - pattern: ".*HOSTNAME$"
-    type: string
-    group: network
-
-  - pattern: ".*URL$"
-    type: string
-    group: network
-
-  - pattern: ".*_URL$"
-    type: string
-    group: network
-
-  - pattern: ".*DOMAIN$"
+  - pattern: "^[A-Z0-9_]*_?DOMAIN$"
     type: string
     group: network
 
   # Authentication and security
-  - pattern: ".*PASSWORD$"
+  - pattern: "^[A-Z0-9_]*_?PASS(WD|WORD)$"
     type: password
     group: authentication
 
-  - pattern: ".*_PASSWORD$"
+  - pattern: "^[A-Z0-9_]*_?SECRET$"
     type: password
     group: authentication
 
-  - pattern: ".*PASSWD$"
+  - pattern: "^[A-Z0-9_]*_?TOKEN$"
     type: password
     group: authentication
 
-  - pattern: ".*SECRET$"
+  - pattern: "^[A-Z0-9_]*_?KEY$"
     type: password
     group: authentication
 
-  - pattern: ".*_SECRET$"
-    type: password
-    group: authentication
-
-  - pattern: ".*TOKEN$"
-    type: password
-    group: authentication
-
-  - pattern: ".*_TOKEN$"
-    type: password
-    group: authentication
-
-  - pattern: ".*KEY$"
-    type: password
-    group: authentication
-
-  - pattern: ".*_KEY$"
-    type: password
-    group: authentication
-
-  - pattern: ".*USERNAME$"
-    type: string
-    group: authentication
-
-  - pattern: ".*_USERNAME$"
-    type: string
-    group: authentication
-
-  - pattern: ".*USER$"
-    type: string
-    group: authentication
-
-  - pattern: ".*_USER$"
+  - pattern: "^[A-Z0-9_]*_?USER(NAME)?$"
     type: string
     group: authentication
 
   # Paths and directories
-  - pattern: ".*_DIR$"
+  - pattern: "^[A-Z0-9_]*_(DIR|PATH)$"
     type: path
     group: storage
 
-  - pattern: ".*_PATH$"
-    type: path
-    group: storage
-
-  - pattern: ".*DIRECTORY$"
-    type: path
-    group: storage
-
-  - pattern: ".*FOLDER$"
+  - pattern: "^[A-Z0-9_]*_(DIRECTORY|FOLDER)$"
     type: path
     group: storage
 
   # User and group IDs
-  - pattern: ".*PUID$"
-    type: integer
-    validation:
-      min: 0
-      max: 65535
-    group: system
-
-  - pattern: ".*PGID$"
-    type: integer
-    validation:
-      min: 0
-      max: 65535
-    group: system
-
-  - pattern: ".*UID$"
-    type: integer
-    validation:
-      min: 0
-      max: 65535
-    group: system
-
-  - pattern: ".*GID$"
+  - pattern: "^P?(U|G)ID$"
     type: integer
     validation:
       min: 0
@@ -160,61 +82,21 @@ patterns:
     type: string
     group: system
 
-  - pattern: ".*TIMEZONE$"
+  - pattern: "^[A-Z0-9_]*_?TIMEZONE$"
     type: string
     group: system
 
   # Boolean flags (common enable/disable patterns)
-  - pattern: ".*ENABLED$"
+  - pattern: "^[A-Z0-9_]*_?(ENABLE|DISABLE)D?$"
     type: boolean
     group: configuration
 
-  - pattern: ".*_ENABLED$"
-    type: boolean
-    group: configuration
-
-  - pattern: ".*DISABLE$"
-    type: boolean
-    group: configuration
-
-  - pattern: ".*_DISABLE$"
-    type: boolean
-    group: configuration
-
-  - pattern: ".*DEBUG$"
+  - pattern: "^[A-Z0-9_]*_?DEBUG$"
     type: boolean
     group: configuration
 
   # Generic numbers (after more specific patterns)
-  - pattern: ".*COUNT$"
-    type: integer
-    group: configuration
-
-  - pattern: ".*_COUNT$"
-    type: integer
-    group: configuration
-
-  - pattern: ".*SIZE$"
-    type: integer
-    group: configuration
-
-  - pattern: ".*_SIZE$"
-    type: integer
-    group: configuration
-
-  - pattern: ".*LIMIT$"
-    type: integer
-    group: configuration
-
-  - pattern: ".*_LIMIT$"
-    type: integer
-    group: configuration
-
-  - pattern: ".*TIMEOUT$"
-    type: integer
-    group: configuration
-
-  - pattern: ".*_TIMEOUT$"
+  - pattern: "^[A-Z0-9_]*_?(COUNT|SIZE|LIMIT|TIMEOUT)$"
     type: integer
     group: configuration
 

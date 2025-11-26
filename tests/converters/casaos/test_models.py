@@ -96,6 +96,13 @@ class TestCasaOSPort:
             CasaOSPort(**data)
         assert "host" in str(exc_info.value).lower()
 
+    def test_invalid_protocol(self):
+        """Test that invalid protocol is rejected."""
+        data = {"container": 80, "host": 8080, "protocol": "invalid"}
+        with pytest.raises(ValidationError) as exc_info:
+            CasaOSPort(**data)
+        assert "protocol" in str(exc_info.value).lower()
+
 
 class TestCasaOSVolume:
     """Tests for CasaOSVolume model."""

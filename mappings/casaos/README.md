@@ -12,6 +12,59 @@ The converter uses three types of mapping files to handle the differences betwee
 
 These mappings are externalized to YAML files to enable updates without code changes.
 
+## Conversion Pipeline
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                   CasaOS Application Input                        │
+│              (docker-compose.yml + x-casaos metadata)             │
+└────────────────────────────┬─────────────────────────────────────┘
+                             │
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│  PHASE 1: PARSE                                                 │
+│  ┌────────────────────────────────────────────────────────────┐│
+│  │ • Read docker-compose.yml                                  ││
+│  │ • Extract x-casaos metadata                                ││
+│  │ • Validate CasaOS schema                                   ││
+│  │ • Create CasaOSApp model                                   ││
+│  └────────────────────────────────────────────────────────────┘│
+└────────────────────────────┬───────────────────────────────────┘
+                             │
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│  PHASE 2: TRANSFORM                                             │
+│  ┌────────────────────────────────────────────────────────────┐│
+│  │ • Map category using categories.yaml                       ││
+│  │ • Infer field types using field_types.yaml                 ││
+│  │ • Transform paths using paths.yaml                         ││
+│  │ • Generate package name (casaos-{app}-container)           ││
+│  │ • Organize fields into config groups                       ││
+│  │ • Apply validation rules                                   ││
+│  └────────────────────────────────────────────────────────────┘│
+└────────────────────────────┬───────────────────────────────────┘
+                             │
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│  PHASE 3: GENERATE                                              │
+│  ┌────────────────────────────────────────────────────────────┐│
+│  │ • Create metadata.yaml (package info, tags, maintainer)    ││
+│  │ • Create config.yml (field groups and types)               ││
+│  │ • Create docker-compose.yml (clean container definitions)  ││
+│  │ • Download and validate assets (icons, screenshots)        ││
+│  │ • Track conversion provenance                              ││
+│  └────────────────────────────────────────────────────────────┘│
+└────────────────────────────┬───────────────────────────────────┘
+                             │
+                             ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                      HaLOS Package Output                         │
+│      metadata.yaml + config.yml + docker-compose.yml + assets    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Mapping Files Role**: The YAML configuration files in this directory control the TRANSFORM phase, providing the rules and patterns that guide how CasaOS structures are converted to HaLOS format.
+
 ## File Formats
 
 ### categories.yaml

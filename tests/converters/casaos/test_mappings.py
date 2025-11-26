@@ -150,7 +150,7 @@ class TestFieldTypesMappings:
             "PORT" in p for p in patterns
         ), "Should have pattern for PORT variables"
         assert any(
-            "PASSWORD" in p for p in patterns
+            "PASS" in p for p in patterns
         ), "Should have pattern for PASSWORD variables"
         assert any(
             "PATH" in p or "DIR" in p for p in patterns
@@ -257,6 +257,36 @@ class TestPathsMappings:
                 assert config["field_name"].isupper(), (
                     f"Field name should be uppercase: {config['field_name']}"
                 )
+
+    def test_paths_no_preserve_transform_overlap(self, paths_config):
+        """Test that preserve paths don't overlap with transform paths."""
+        special_cases = paths_config["special_cases"]
+        transforms = paths_config["transforms"]
+
+        if "preserve" not in special_cases:
+            return
+
+        preserve_paths = set(special_cases["preserve"])
+        transform_froms = {t["from"] for t in transforms}
+
+        # Check for direct overlaps
+        overlaps = preserve_paths & transform_froms
+        assert len(overlaps) == 0, (
+            f"Paths should not be both preserved and transformed: {overlaps}"
+        )
+
+        # Check for prefix overlaps (e.g., /etc and /etc/config)
+        for preserve in preserve_paths:
+            for transform_from in transform_froms:
+                # Skip if they contain placeholders
+                if "{" in preserve or "{" in transform_from:
+                    continue
+
+                # Check if one is a prefix of the other
+                if transform_from.startswith(preserve + "/") or preserve.startswith(transform_from + "/"):
+                    raise AssertionError(
+                        f"Preserved path '{preserve}' overlaps with transform '{transform_from}'"
+                    )
 
 
 class TestMappingsIntegration:
