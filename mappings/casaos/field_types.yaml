@@ -1,0 +1,246 @@
+# CasaOS Environment Variable to HaLOS Field Type Mappings
+#
+# This file defines rules for inferring HaLOS config.yml field types from
+# CasaOS environment variable definitions. The converter uses these patterns
+# to determine appropriate field types, validation rules, and grouping.
+#
+# Format:
+#   patterns:
+#     - pattern: <regex-pattern>
+#       type: <halos-field-type>
+#       validation: {optional validation rules}
+#       group: <optional-group-hint>
+#
+# Field types: string, integer, boolean, enum, path, password
+# (Must match ConfigField types in schemas/config.py)
+
+# Type inference patterns (evaluated in order)
+patterns:
+  # Port numbers - must come before general number patterns
+  - pattern: ".*PORT$"
+    type: integer
+    validation:
+      min: 1024
+      max: 65535
+    group: network
+
+  - pattern: ".*_PORT$"
+    type: integer
+    validation:
+      min: 1024
+      max: 65535
+    group: network
+
+  # Network and protocol settings
+  - pattern: ".*HOST$"
+    type: string
+    group: network
+
+  - pattern: ".*_HOST$"
+    type: string
+    group: network
+
+  - pattern: ".*HOSTNAME$"
+    type: string
+    group: network
+
+  - pattern: ".*URL$"
+    type: string
+    group: network
+
+  - pattern: ".*_URL$"
+    type: string
+    group: network
+
+  - pattern: ".*DOMAIN$"
+    type: string
+    group: network
+
+  # Authentication and security
+  - pattern: ".*PASSWORD$"
+    type: password
+    group: authentication
+
+  - pattern: ".*_PASSWORD$"
+    type: password
+    group: authentication
+
+  - pattern: ".*PASSWD$"
+    type: password
+    group: authentication
+
+  - pattern: ".*SECRET$"
+    type: password
+    group: authentication
+
+  - pattern: ".*_SECRET$"
+    type: password
+    group: authentication
+
+  - pattern: ".*TOKEN$"
+    type: password
+    group: authentication
+
+  - pattern: ".*_TOKEN$"
+    type: password
+    group: authentication
+
+  - pattern: ".*KEY$"
+    type: password
+    group: authentication
+
+  - pattern: ".*_KEY$"
+    type: password
+    group: authentication
+
+  - pattern: ".*USERNAME$"
+    type: string
+    group: authentication
+
+  - pattern: ".*_USERNAME$"
+    type: string
+    group: authentication
+
+  - pattern: ".*USER$"
+    type: string
+    group: authentication
+
+  - pattern: ".*_USER$"
+    type: string
+    group: authentication
+
+  # Paths and directories
+  - pattern: ".*_DIR$"
+    type: path
+    group: storage
+
+  - pattern: ".*_PATH$"
+    type: path
+    group: storage
+
+  - pattern: ".*DIRECTORY$"
+    type: path
+    group: storage
+
+  - pattern: ".*FOLDER$"
+    type: path
+    group: storage
+
+  # User and group IDs
+  - pattern: ".*PUID$"
+    type: integer
+    validation:
+      min: 0
+      max: 65535
+    group: system
+
+  - pattern: ".*PGID$"
+    type: integer
+    validation:
+      min: 0
+      max: 65535
+    group: system
+
+  - pattern: ".*UID$"
+    type: integer
+    validation:
+      min: 0
+      max: 65535
+    group: system
+
+  - pattern: ".*GID$"
+    type: integer
+    validation:
+      min: 0
+      max: 65535
+    group: system
+
+  # Timezone
+  - pattern: "^TZ$"
+    type: string
+    group: system
+
+  - pattern: ".*TIMEZONE$"
+    type: string
+    group: system
+
+  # Boolean flags (common enable/disable patterns)
+  - pattern: ".*ENABLED$"
+    type: boolean
+    group: configuration
+
+  - pattern: ".*_ENABLED$"
+    type: boolean
+    group: configuration
+
+  - pattern: ".*DISABLE$"
+    type: boolean
+    group: configuration
+
+  - pattern: ".*_DISABLE$"
+    type: boolean
+    group: configuration
+
+  - pattern: ".*DEBUG$"
+    type: boolean
+    group: configuration
+
+  # Generic numbers (after more specific patterns)
+  - pattern: ".*COUNT$"
+    type: integer
+    group: configuration
+
+  - pattern: ".*_COUNT$"
+    type: integer
+    group: configuration
+
+  - pattern: ".*SIZE$"
+    type: integer
+    group: configuration
+
+  - pattern: ".*_SIZE$"
+    type: integer
+    group: configuration
+
+  - pattern: ".*LIMIT$"
+    type: integer
+    group: configuration
+
+  - pattern: ".*_LIMIT$"
+    type: integer
+    group: configuration
+
+  - pattern: ".*TIMEOUT$"
+    type: integer
+    group: configuration
+
+  - pattern: ".*_TIMEOUT$"
+    type: integer
+    group: configuration
+
+# Default fallback
+# If no pattern matches, use these defaults based on CasaOS type hint
+defaults:
+  number: integer
+  text: string
+  password: password
+  boolean: boolean
+  # If CasaOS type is not specified, default to string
+  fallback: string
+
+# Group hints for organizing fields in config.yml
+# The converter uses these to group related fields together
+groups:
+  network: "Network Settings"
+  authentication: "Authentication"
+  storage: "Storage Configuration"
+  system: "System Settings"
+  configuration: "General Configuration"
+
+# Notes:
+# - Patterns are evaluated in order from top to bottom
+# - First matching pattern wins
+# - Regex patterns use Python re module syntax
+# - Group hints help organize fields but converter may override based on context
+# - Password type fields are masked in UI
+# - Path type fields may trigger directory picker in UI
