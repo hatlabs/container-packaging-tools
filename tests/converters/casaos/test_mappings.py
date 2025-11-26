@@ -144,7 +144,6 @@ class TestFieldTypesMappings:
     def test_field_types_common_patterns_exist(self, field_types_config):
         """Test that common environment variable patterns are covered."""
         patterns = [p["pattern"] for p in field_types_config["patterns"]]
-        pattern_str = " ".join(patterns)
 
         # Check for common patterns
         assert any(
