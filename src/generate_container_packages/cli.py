@@ -270,6 +270,12 @@ def _convert_single(
         )
 
         # Download assets if requested
+        # Note: Asset download failures are non-fatal - they generate warnings
+        # but don't fail the conversion. This is intentional because:
+        # 1. Assets (icons/screenshots) are supplementary, not required
+        # 2. Network issues shouldn't block otherwise valid conversions
+        # 3. Missing assets can be added later manually if needed
+        # The user is informed via warning messages in the output.
         if args.download_assets:
             try:
                 logger.info("Downloading assets...")
@@ -314,6 +320,20 @@ def _convert_batch(
 ) -> int:
     """Convert multiple CasaOS apps in batch mode.
 
+    Batch mode processes all apps in the source directory, continuing even if
+    individual apps fail. The final exit code indicates whether ANY failures
+    occurred, but all convertible apps will be processed.
+
+    Failure Behavior:
+        - Individual app failures are logged and counted
+        - Conversion continues with remaining apps
+        - Exit code is non-zero if any app failed
+        - Summary shows success/failure counts
+
+    This "continue on error" behavior is intentional for large batch operations
+    where you want to convert as many apps as possible. If strict fail-fast
+    behavior is needed, process apps individually.
+
     Args:
         source_path: Directory containing multiple app subdirectories
         output_dir: Output directory for converted apps
@@ -322,7 +342,7 @@ def _convert_batch(
         args: Command-line arguments
 
     Returns:
-        Exit code
+        Exit code (0 if all succeeded, non-zero if any failed)
     """
     if not source_path.is_dir():
         logger.error("Batch mode requires a directory")
@@ -349,6 +369,14 @@ def _convert_batch(
     print(f"Converting {len(app_dirs)} apps...")
 
     # Convert each app
+    # TODO: Consider using a progress reporting abstraction (e.g., tqdm or custom
+    # Progress class) for better terminal output control, easier testing, and more
+    # flexible output formats. Current simple print-based approach works but could
+    # be enhanced with:
+    # - Progress bars for visual feedback
+    # - Better handling of terminal width and wrapping
+    # - Structured output for machine parsing
+    # - Pluggable progress reporters for different output formats
     success_count = 0
     failure_count = 0
 
