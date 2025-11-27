@@ -200,12 +200,13 @@ function build {
   #@ Build Debian package in Docker container
   #@ Category: Build
   echo "🏗️  Building Debian package..."
-  # Note: dpkg-genbuildinfo error is expected and harmless
-  # (.deb is built in current dir, but buildinfo expects it in parent dir)
+  # Build package and move artifacts from container parent dir to workspace
+  # Inside container: /workspace = project dir, /workspace/.. = / (container root)
+  # This allows dpkg-buildpackage to write to parent dir without host permission issues
   devtools \
-    bash -c "uv sync --dev && (dpkg-buildpackage -us -uc -b || true)"
+    bash -c "set -e; uv sync --dev && dpkg-buildpackage -us -uc -b; mv ../*.deb ../*.buildinfo ../*.changes ./ 2>/dev/null || true"
 
-  # Get the actual package name from the built .deb
+  # Verify the .deb was actually built (real failure check)
   PKG=$(ls -t container-packaging-tools_*.deb 2>/dev/null | head -1)
   if [ -n "$PKG" ]; then
     echo "✅ Build complete - package at ./$PKG"
