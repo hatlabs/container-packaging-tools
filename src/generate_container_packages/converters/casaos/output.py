@@ -4,6 +4,7 @@ Writes metadata.yaml, config.yml, and docker-compose.yml files with
 schema validation and proper YAML formatting.
 """
 
+import copy
 from pathlib import Path
 from typing import Any
 
@@ -61,18 +62,33 @@ class OutputWriter:
             OSError: If file writing fails
         """
         # Validate metadata against schema
-        PackageMetadata.model_validate(metadata)
+        try:
+            PackageMetadata.model_validate(metadata)
+        except Exception as e:
+            error_msg = f"Metadata validation failed: {e}"
+            context.errors.append(error_msg)
+            raise
 
         # Validate config against schema
-        ConfigSchema.model_validate(config)
+        try:
+            ConfigSchema.model_validate(config)
+        except Exception as e:
+            error_msg = f"Config validation failed: {e}"
+            context.errors.append(error_msg)
+            raise
 
         # Strip any remaining x-casaos extensions from compose
         compose_clean = self._strip_xcasaos(compose)
 
         # Write files
-        self._write_yaml(self.output_dir / "metadata.yaml", metadata)
-        self._write_yaml(self.output_dir / "config.yml", config)
-        self._write_yaml(self.output_dir / "docker-compose.yml", compose_clean)
+        try:
+            self._write_yaml(self.output_dir / "metadata.yaml", metadata)
+            self._write_yaml(self.output_dir / "config.yml", config)
+            self._write_yaml(self.output_dir / "docker-compose.yml", compose_clean)
+        except OSError as e:
+            error_msg = f"Failed to write output files: {e}"
+            context.errors.append(error_msg)
+            raise
 
     def _strip_xcasaos(self, compose: dict[str, Any]) -> dict[str, Any]:
         """Strip x-casaos extensions from compose dict.
@@ -86,8 +102,6 @@ class OutputWriter:
             Cleaned compose dictionary without x-casaos extensions
         """
         # Deep copy to avoid modifying input
-        import copy
-
         compose_clean = copy.deepcopy(compose)
 
         # Remove root-level x-casaos
