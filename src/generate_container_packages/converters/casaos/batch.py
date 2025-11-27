@@ -4,6 +4,7 @@ Provides BatchConverter for converting multiple CasaOS applications
 in parallel with configurable worker limits and progress tracking.
 """
 
+import logging
 import os
 import time
 from collections.abc import Callable
@@ -12,10 +13,20 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .assets import AssetManager
+from .constants import (
+    DEFAULT_ARCHITECTURE,
+    DEFAULT_LICENSE,
+    DEFAULT_MAINTAINER_DOMAIN,
+    DEFAULT_VERSION,
+    REQUIRED_ROLE_TAG,
+    get_default_mappings_dir,
+)
 from .models import ConversionContext
 from .output import OutputWriter
 from .parser import CasaOSParser
 from .transformer import MetadataTransformer
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -161,12 +172,7 @@ class BatchConverter:
 
         # Determine mappings directory
         if mappings_dir is None:
-            # Use default mappings from package
-            mappings_dir = (
-                Path(__file__).parent.parent.parent.parent.parent
-                / "mappings"
-                / "casaos"
-            )
+            mappings_dir = get_default_mappings_dir()
 
         # Create output directory
         output_dir = Path(output_dir)
@@ -324,6 +330,10 @@ class BatchConverter:
             }
 
         except Exception as e:
+            logger.error(
+                f"Failed to convert app {job.app_id} from {job.app_dir}: {e}",
+                exc_info=True,
+            )
             return {
                 "success": False,
                 "error": str(e),
@@ -333,17 +343,13 @@ class BatchConverter:
     def _enrich_metadata(self, metadata: dict, casaos_app) -> None:  # noqa: F821
         """Enrich metadata with required fields that CasaOS doesn't provide.
 
+        Uses shared constants from the constants module to ensure consistency
+        across all converter components.
+
         Args:
             metadata: Metadata dictionary to enrich (modified in-place)
             casaos_app: Parsed CasaOS application data
         """
-        # Import constants from CLI
-        # This is a bit of coupling but keeps the enrichment logic consistent
-        DEFAULT_VERSION = "1.0.0"
-        DEFAULT_MAINTAINER_DOMAIN = "auto-converted@casaos.io"
-        DEFAULT_LICENSE = "Unknown"
-        DEFAULT_ARCHITECTURE = "all"
-        REQUIRED_ROLE_TAG = "role::container-app"
 
         if "version" not in metadata or not metadata["version"]:
             metadata["version"] = DEFAULT_VERSION

@@ -29,6 +29,13 @@ from generate_container_packages.validator import validate_input_directory
 try:
     from generate_container_packages.converters.casaos.assets import AssetManager
     from generate_container_packages.converters.casaos.batch import BatchConverter
+    from generate_container_packages.converters.casaos.constants import (
+        DEFAULT_ARCHITECTURE,
+        DEFAULT_LICENSE,
+        DEFAULT_MAINTAINER_DOMAIN,
+        DEFAULT_VERSION,
+        REQUIRED_ROLE_TAG,
+    )
     from generate_container_packages.converters.casaos.models import ConversionContext
     from generate_container_packages.converters.casaos.output import OutputWriter
     from generate_container_packages.converters.casaos.parser import CasaOSParser
@@ -49,13 +56,6 @@ EXIT_VALIDATION_ERROR = 1
 EXIT_TEMPLATE_ERROR = 2
 EXIT_BUILD_ERROR = 3
 EXIT_DEPENDENCY_ERROR = 4
-
-# Default values for metadata enrichment
-DEFAULT_VERSION = "1.0.0"
-DEFAULT_MAINTAINER_DOMAIN = "auto-converted@casaos.io"
-DEFAULT_LICENSE = "Unknown"
-DEFAULT_ARCHITECTURE = "all"
-REQUIRED_ROLE_TAG = "role::container-app"
 
 logger = logging.getLogger(__name__)
 
