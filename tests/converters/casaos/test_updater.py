@@ -5,7 +5,7 @@ with converted HaLOS apps to detect changes.
 """
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -18,7 +18,6 @@ from generate_container_packages.converters.casaos.updater import (
     UpdateReport,
     UpstreamApp,
 )
-from schemas import SourceMetadata
 
 
 class TestCasaOSUpdateDetectorInit:
@@ -67,9 +66,7 @@ class TestHashComputation:
         assert hash1 == hash2
         assert len(hash1) == 64  # SHA256 produces 64 hex characters
 
-    def test_compute_hash_different_for_different_content(
-        self, tmp_path: Path
-    ) -> None:
+    def test_compute_hash_different_for_different_content(self, tmp_path: Path) -> None:
         """Test that different files produce different hashes."""
         detector = CasaOSUpdateDetector(tmp_path, tmp_path)
 
@@ -119,9 +116,7 @@ x-casaos:
         )
         return tmp_path
 
-    def test_scan_upstream_finds_apps(
-        self, tmp_path: Path, upstream_app: Path
-    ) -> None:
+    def test_scan_upstream_finds_apps(self, tmp_path: Path, upstream_app: Path) -> None:
         """Test that scan_upstream finds CasaOS apps."""
         detector = CasaOSUpdateDetector(upstream_app, tmp_path / "converted")
 
@@ -708,7 +703,7 @@ class TestUpdateReport:
 
     def test_format_report_markdown(self) -> None:
         """Test that report formats as readable markdown."""
-        timestamp = datetime(2025, 11, 27, 12, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 27, 12, 0, 0, tzinfo=UTC)
         report = UpdateReport(
             new_apps=["app1", "app2"],
             updated_apps=[UpdatedApp("app3", "oldhash", "newhash")],
@@ -731,7 +726,7 @@ class TestUpdateReport:
 
     def test_format_report_with_no_changes(self) -> None:
         """Test report formatting when no changes detected."""
-        timestamp = datetime(2025, 11, 27, 12, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 27, 12, 0, 0, tzinfo=UTC)
         report = UpdateReport(
             new_apps=[],
             updated_apps=[],
@@ -745,7 +740,7 @@ class TestUpdateReport:
 
     def test_to_dict_serialization(self) -> None:
         """Test that report can be serialized to dict for JSON export."""
-        timestamp = datetime(2025, 11, 27, 12, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 27, 12, 0, 0, tzinfo=UTC)
         report = UpdateReport(
             new_apps=["app1"],
             updated_apps=[UpdatedApp("app2", "old", "new")],

@@ -30,12 +30,8 @@ class SourceMetadata(BaseModel):
         min_length=1,
         description="Source type identifier (e.g., 'casaos', 'runtipi')",
     )
-    app_id: str = Field(
-        min_length=1, description="App identifier in source system"
-    )
-    source_url: str = Field(
-        min_length=1, description="URL to source repository"
-    )
+    app_id: str = Field(min_length=1, description="App identifier in source system")
+    source_url: str = Field(min_length=1, description="URL to source repository")
     upstream_hash: str = Field(
         min_length=1,
         description="SHA256 hash of source file(s) for change detection",

@@ -6,7 +6,7 @@ repository with converted HaLOS packages.
 
 import hashlib
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -142,9 +142,7 @@ class CasaOSUpdateDetector:
         converted_apps = self._scan_converted()
 
         # Detect new apps (in upstream but not converted)
-        new_apps = [
-            app_id for app_id in upstream_apps if app_id not in converted_apps
-        ]
+        new_apps = [app_id for app_id in upstream_apps if app_id not in converted_apps]
 
         # Detect updated apps (hash mismatch)
         updated_apps = [
@@ -168,7 +166,7 @@ class CasaOSUpdateDetector:
             new_apps=new_apps,
             updated_apps=updated_apps,
             removed_apps=removed_apps,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
     def _scan_upstream(self) -> dict[str, UpstreamApp]:

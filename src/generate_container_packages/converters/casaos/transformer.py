@@ -7,7 +7,7 @@ and package naming.
 
 import hashlib
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -155,7 +155,7 @@ class MetadataTransformer:
                 "app_id": context.app_id,
                 "source_url": source_url,
                 "upstream_hash": self._compute_hash(source_file_path),
-                "conversion_timestamp": datetime.now(timezone.utc).isoformat(),
+                "conversion_timestamp": datetime.now(UTC).isoformat(),
             }
 
         # Build metadata dictionary
