@@ -5,13 +5,14 @@ including category mapping, field type inference, path transformation,
 and package naming.
 """
 
-import hashlib
 import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+from generate_container_packages.utils import compute_file_hash
 
 from .models import CasaOSApp, CasaOSEnvVar, ConversionContext
 
@@ -154,7 +155,7 @@ class MetadataTransformer:
                 "type": context.source_format,
                 "app_id": context.app_id,
                 "source_url": source_url,
-                "upstream_hash": self._compute_hash(source_file_path),
+                "upstream_hash": compute_file_hash(source_file_path),
                 "conversion_timestamp": datetime.now(UTC).isoformat(),
             }
 
@@ -485,17 +486,3 @@ class MetadataTransformer:
             compose["services"][service.name] = service_def
 
         return compose
-
-    def _compute_hash(self, file_path: Path) -> str:
-        """Compute SHA256 hash of file content.
-
-        Args:
-            file_path: Path to file to hash
-
-        Returns:
-            Hexadecimal SHA256 hash string
-        """
-        sha256 = hashlib.sha256()
-        with open(file_path, "rb") as f:
-            sha256.update(f.read())
-        return sha256.hexdigest()

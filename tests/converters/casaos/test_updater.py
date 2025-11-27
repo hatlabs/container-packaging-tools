@@ -4,8 +4,8 @@ Tests the CasaOSUpdateDetector class that compares upstream CasaOS apps
 with converted HaLOS apps to detect changes.
 """
 
-import hashlib
 from datetime import UTC, datetime
+from generate_container_packages.utils import compute_file_hash
 from pathlib import Path
 
 import pytest
@@ -56,12 +56,11 @@ class TestHashComputation:
 
     def test_compute_hash_consistent(self, tmp_path: Path) -> None:
         """Test that same file produces same hash."""
-        detector = CasaOSUpdateDetector(tmp_path, tmp_path)
         test_file = tmp_path / "test.txt"
         test_file.write_text("test content")
 
-        hash1 = detector._compute_hash(test_file)
-        hash2 = detector._compute_hash(test_file)
+        hash1 = compute_file_hash(test_file)
+        hash2 = compute_file_hash(test_file)
 
         assert hash1 == hash2
         assert len(hash1) == 64  # SHA256 produces 64 hex characters
@@ -75,19 +74,20 @@ class TestHashComputation:
         file1.write_text("content 1")
         file2.write_text("content 2")
 
-        hash1 = detector._compute_hash(file1)
-        hash2 = detector._compute_hash(file2)
+        hash1 = compute_file_hash(file1)
+        hash2 = compute_file_hash(file2)
 
         assert hash1 != hash2
 
     def test_compute_hash_matches_sha256(self, tmp_path: Path) -> None:
         """Test that computed hash matches expected SHA256."""
-        detector = CasaOSUpdateDetector(tmp_path, tmp_path)
+        import hashlib
+
         test_file = tmp_path / "test.txt"
         content = "test content for hashing"
         test_file.write_text(content)
 
-        computed_hash = detector._compute_hash(test_file)
+        computed_hash = compute_file_hash(test_file)
         expected_hash = hashlib.sha256(content.encode()).hexdigest()
 
         assert computed_hash == expected_hash
@@ -412,7 +412,7 @@ class TestChangeDetection:
 
         # Compute hash for converted app
         detector = CasaOSUpdateDetector(upstream_dir, converted_dir)
-        compose_hash = detector._compute_hash(compose_file)
+        compose_hash = compute_file_hash(compose_file)
 
         # Create converted app with same hash
         conv_dir = converted_dir / "casaos-existing-container"
@@ -505,7 +505,7 @@ class TestChangeDetection:
 
         # Compute hash
         detector = CasaOSUpdateDetector(upstream_dir, converted_dir)
-        compose_hash = detector._compute_hash(compose_file)
+        compose_hash = compute_file_hash(compose_file)
 
         # Create converted app with matching hash
         conv_dir = converted_dir / "casaos-unchanged-container"
@@ -591,7 +591,7 @@ class TestChangeDetection:
 
         # Compute hash
         detector = CasaOSUpdateDetector(upstream_dir, converted_dir)
-        compose_hash = detector._compute_hash(compose_file)
+        compose_hash = compute_file_hash(compose_file)
 
         # Create converted app
         conv_dir = converted_dir / "casaos-present-container"

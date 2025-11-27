@@ -4,7 +4,6 @@ Detects new, updated, and removed apps by comparing upstream CasaOS
 repository with converted HaLOS packages.
 """
 
-import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,6 +11,7 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
+from generate_container_packages.utils import compute_file_hash
 from schemas import SourceMetadata
 
 
@@ -192,7 +192,7 @@ class CasaOSUpdateDetector:
                 continue
 
             # Compute hash of compose file
-            compose_hash = self._compute_hash(compose_file)
+            compose_hash = compute_file_hash(compose_file)
 
             # Use directory name as app_id
             app_id = app_dir.name
@@ -266,17 +266,3 @@ class CasaOSUpdateDetector:
                 continue
 
         return apps
-
-    def _compute_hash(self, file_path: Path) -> str:
-        """Compute SHA256 hash of file content.
-
-        Args:
-            file_path: Path to file to hash
-
-        Returns:
-            Hexadecimal SHA256 hash string
-        """
-        sha256 = hashlib.sha256()
-        with open(file_path, "rb") as f:
-            sha256.update(f.read())
-        return sha256.hexdigest()
