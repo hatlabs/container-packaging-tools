@@ -5,7 +5,6 @@ with converted HaLOS apps to detect changes.
 """
 
 from datetime import UTC, datetime
-from generate_container_packages.utils import compute_file_hash
 from pathlib import Path
 
 import pytest
@@ -18,6 +17,7 @@ from generate_container_packages.converters.casaos.updater import (
     UpdateReport,
     UpstreamApp,
 )
+from generate_container_packages.utils import compute_file_hash
 
 
 class TestCasaOSUpdateDetectorInit:
@@ -67,8 +67,6 @@ class TestHashComputation:
 
     def test_compute_hash_different_for_different_content(self, tmp_path: Path) -> None:
         """Test that different files produce different hashes."""
-        detector = CasaOSUpdateDetector(tmp_path, tmp_path)
-
         file1 = tmp_path / "file1.txt"
         file2 = tmp_path / "file2.txt"
         file1.write_text("content 1")
