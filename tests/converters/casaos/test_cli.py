@@ -510,10 +510,12 @@ class TestConvertCasaOSOptions:
         mappings = tmp_path / "mappings"
         mappings.mkdir()
 
-        # Create minimal mappings
+        # Create minimal mappings (all three required files)
         (mappings / "categories.yaml").write_text(
-            "mappings:\n  Utilities: utilities\ndefault: misc\n"
+            "mappings:\n  Utilities: utils\ndefault: misc\n"
         )
+        (mappings / "field_types.yaml").write_text("patterns: []\n")
+        (mappings / "paths.yaml").write_text("preserved: []\ntransforms: []\n")
 
         result = subprocess.run(
             [

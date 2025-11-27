@@ -193,8 +193,9 @@ def _convert_single(
             # Must be single value from: 'all', 'amd64', 'arm64', 'armhf'
             metadata["architecture"] = "all"  # Default to all architectures
 
-        # Write output files
-        writer = OutputWriter(output_dir)
+        # Write output files (create app-specific subdirectory)
+        app_output_dir = output_dir / casaos_app.id
+        writer = OutputWriter(app_output_dir)
         writer.write_package(
             metadata,
             transformed["config"],
@@ -206,17 +207,16 @@ def _convert_single(
         if args.download_assets:
             try:
                 logger.info("Downloading assets...")
-                asset_manager = AssetManager(output_dir / casaos_app.id)
+                asset_manager = AssetManager(app_output_dir)
                 asset_manager.download_all_assets(casaos_app, context)
             except Exception as e:
                 logger.warning(f"Asset download failed: {e}")
                 context.warnings.append(f"Asset download failed: {e}")
 
         # Report results
-        app_dir = output_dir / casaos_app.id
         print(f"\nSuccess! Converted app: {casaos_app.name}")
         print(f"  App ID: {casaos_app.id}")
-        print(f"  Output: {app_dir}")
+        print(f"  Output: {app_output_dir}")
 
         if context.warnings:
             print(f"\nWarnings ({len(context.warnings)}):")
@@ -351,8 +351,8 @@ def _convert_sync(
     if not args.quiet:
         if report.new_apps:
             print("\nNew apps:")
-            for app in report.new_apps:
-                print(f"  + {app.app_id}")
+            for app_id in report.new_apps:
+                print(f"  + {app_id}")
 
         if report.updated_apps:
             print("\nUpdated apps:")
@@ -361,15 +361,17 @@ def _convert_sync(
 
         if report.removed_apps:
             print("\nRemoved apps:")
-            for app in report.removed_apps:
-                print(f"  - {app.app_id}")
+            for app_id in report.removed_apps:
+                print(f"  - {app_id}")
 
     # Convert new and updated apps
     apps_to_convert = []
 
-    for new_app in report.new_apps:
-        apps_to_convert.append(upstream_dir / new_app.app_id)
+    # new_apps is list[str] (app IDs)
+    for app_id in report.new_apps:
+        apps_to_convert.append(upstream_dir / app_id)
 
+    # updated_apps is list[UpdatedApp] (objects with app_id attribute)
     for updated_app in report.updated_apps:
         apps_to_convert.append(upstream_dir / updated_app.app_id)
 
