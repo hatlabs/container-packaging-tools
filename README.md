@@ -3,6 +3,7 @@
 Command-line tools for converting container application definitions into Debian packages.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/hatlabs/container-packaging-tools/actions/workflows/pr.yml/badge.svg)](https://github.com/hatlabs/container-packaging-tools/actions/workflows/pr.yml)
 
 ## Overview
 
@@ -11,6 +12,7 @@ Command-line tools for converting container application definitions into Debian 
 ### Key Features
 
 - **Automated Package Generation**: Convert app definitions to complete Debian packages
+- **CasaOS Converter**: Import applications from CasaOS app store format
 - **Template-Based**: Uses Jinja2 templates for all packaging files
 - **Comprehensive Validation**: Validates metadata, Docker Compose, and configuration schemas
 - **systemd Integration**: Automatically generates systemd service units
@@ -185,6 +187,59 @@ sudo systemctl restart my-app-container
 ```
 
 For more examples and detailed documentation, see [EXAMPLES.md](EXAMPLES.md).
+
+## CasaOS Converter
+
+The CasaOS converter allows you to import applications from the CasaOS app store format and convert them to the container-packaging-tools format. This is useful for leveraging the large CasaOS app ecosystem.
+
+### Converting CasaOS Applications
+
+```bash
+# Convert a single CasaOS app definition
+generate-container-packages convert-casaos casaos-app.yml output/
+
+# Convert in batch mode (entire directory)
+generate-container-packages convert-casaos --batch casaos-apps/ output/
+
+# Convert with asset download (icons, screenshots)
+generate-container-packages convert-casaos --download-assets casaos-app.yml output/
+
+# Sync mode - only update changed files
+generate-container-packages convert-casaos --batch --sync casaos-apps/ output/
+```
+
+### Conversion Features
+
+- **Automatic Mapping**: Converts CasaOS metadata to container-packaging-tools format
+- **Category Translation**: Maps CasaOS categories to Debian package sections
+- **Field Type Detection**: Intelligently converts configuration field types
+- **Asset Download**: Optional download of icons and screenshots
+- **Batch Processing**: Convert multiple apps in parallel
+- **Sync Mode**: Only update files that have changed (preserves manual edits)
+
+### Example Workflow
+
+```bash
+# 1. Clone a CasaOS app store
+git clone https://github.com/IceWhaleTech/CasaOS-AppStore.git
+
+# 2. Convert all apps to container-packaging-tools format
+generate-container-packages convert-casaos --batch \
+  CasaOS-AppStore/Apps/ \
+  my-apps/
+
+# 3. Generate Debian packages from converted apps
+for app in my-apps/*/; do
+  generate-container-packages "$app" build/
+done
+
+# 4. Build the packages
+for pkg in build/*/; do
+  cd "$pkg" && dpkg-buildpackage -us -uc && cd ../..
+done
+```
+
+For detailed converter documentation, see the converter module documentation.
 
 ## Documentation
 
