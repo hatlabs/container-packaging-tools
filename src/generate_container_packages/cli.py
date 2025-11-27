@@ -18,6 +18,14 @@ from generate_container_packages.renderer import render_all_templates
 from generate_container_packages.validator import validate_input_directory
 
 # Converter imports (lazy import to avoid dependency issues)
+# Note: These imports are wrapped in try/except to gracefully handle cases where
+# converter dependencies (e.g., Pillow for image processing) are not installed.
+# The convert-casaos subcommand checks CONVERTER_AVAILABLE and fails gracefully
+# if dependencies are missing. This allows the main build command to work without
+# converter dependencies installed.
+#
+# String literal type hints ("CasaOSParser") are used throughout to avoid requiring
+# these imports for type checking, at the cost of reduced IDE support.
 try:
     from generate_container_packages.converters.casaos.assets import AssetManager
     from generate_container_packages.converters.casaos.models import ConversionContext
@@ -41,17 +49,91 @@ EXIT_TEMPLATE_ERROR = 2
 EXIT_BUILD_ERROR = 3
 EXIT_DEPENDENCY_ERROR = 4
 
+# Default values for metadata enrichment
+DEFAULT_VERSION = "1.0.0"
+DEFAULT_MAINTAINER_DOMAIN = "auto-converted@casaos.io"
+DEFAULT_LICENSE = "Unknown"
+DEFAULT_ARCHITECTURE = "all"
+REQUIRED_ROLE_TAG = "role::container-app"
+
 logger = logging.getLogger(__name__)
+
+
+def _enrich_metadata(metadata: dict, casaos_app: "CasaOSApp") -> None:
+    """Enrich metadata with required fields that CasaOS doesn't provide.
+
+    CasaOS app definitions often lack required HaLOS metadata fields.
+    This function adds sensible defaults for missing required fields.
+
+    Args:
+        metadata: Metadata dictionary to enrich (modified in-place)
+        casaos_app: Parsed CasaOS application data
+
+    Fields enriched:
+        - version: Defaults to DEFAULT_VERSION if missing
+        - maintainer: Generated from developer name with default domain
+        - license: Defaults to DEFAULT_LICENSE if missing
+        - tags: Ensures REQUIRED_ROLE_TAG is present
+        - architecture: Defaults to DEFAULT_ARCHITECTURE if missing
+    """
+    if "version" not in metadata or not metadata["version"]:
+        metadata["version"] = DEFAULT_VERSION
+
+    if "maintainer" not in metadata or not metadata["maintainer"]:
+        # Format: "Name <email@domain.com>"
+        dev_name = casaos_app.developer if casaos_app.developer else "Unknown"
+        metadata["maintainer"] = f"{dev_name} <{DEFAULT_MAINTAINER_DOMAIN}>"
+
+    if "license" not in metadata or not metadata["license"]:
+        metadata["license"] = DEFAULT_LICENSE
+
+    if "tags" not in metadata or not metadata["tags"]:
+        # Must have at least one tag, and must include REQUIRED_ROLE_TAG
+        metadata["tags"] = casaos_app.tags if casaos_app.tags else []
+
+    # Ensure role::container-app tag is always present
+    if REQUIRED_ROLE_TAG not in metadata["tags"]:
+        metadata["tags"].insert(0, REQUIRED_ROLE_TAG)
+
+    if "architecture" not in metadata or not metadata["architecture"]:
+        # Must be single value from: 'all', 'amd64', 'arm64', 'armhf'
+        metadata["architecture"] = DEFAULT_ARCHITECTURE
 
 
 def convert_casaos_command(args: argparse.Namespace) -> int:
     """Execute convert-casaos subcommand.
 
+    Converts CasaOS application definitions to HaLOS container store format.
+    Supports single app conversion, batch mode, and sync mode with update detection.
+
     Args:
-        args: Parsed command-line arguments
+        args: Parsed command-line arguments with attributes:
+            - source: Path to docker-compose.yml or directory
+            - output: Output directory path
+            - batch: Enable batch conversion mode
+            - sync: Enable sync/update detection mode
+            - download_assets: Download icons and screenshots
+            - mappings_dir: Custom mappings directory
+            - upstream_url: Source URL for tracking
 
     Returns:
         Exit code (0 for success, non-zero for errors)
+
+    Examples:
+        Single file conversion:
+            args.source = "app/docker-compose.yml"
+            args.output = "./converted"
+
+        Batch conversion:
+            args.source = "apps/"
+            args.batch = True
+            args.output = "./converted"
+
+        Sync mode (update detection):
+            args.source = "upstream/"
+            args.batch = True
+            args.sync = True
+            args.output = "./converted"
     """
     if not CONVERTER_AVAILABLE:
         logger.error(
@@ -175,23 +257,7 @@ def _convert_single(
 
         # Enrich metadata with required fields that CasaOS doesn't provide
         metadata = transformed["metadata"]
-        if "version" not in metadata or not metadata["version"]:
-            metadata["version"] = "1.0.0"
-        if "maintainer" not in metadata or not metadata["maintainer"]:
-            # Format: "Name <email@domain.com>"
-            dev_name = casaos_app.developer if casaos_app.developer else "Unknown"
-            metadata["maintainer"] = f"{dev_name} <auto-converted@casaos.io>"
-        if "license" not in metadata or not metadata["license"]:
-            metadata["license"] = "Unknown"
-        if "tags" not in metadata or not metadata["tags"]:
-            # Must have at least one tag, and must include 'role::container-app'
-            metadata["tags"] = casaos_app.tags if casaos_app.tags else []
-        # Ensure role::container-app tag is always present
-        if "role::container-app" not in metadata["tags"]:
-            metadata["tags"].insert(0, "role::container-app")
-        if "architecture" not in metadata or not metadata["architecture"]:
-            # Must be single value from: 'all', 'amd64', 'arm64', 'armhf'
-            metadata["architecture"] = "all"  # Default to all architectures
+        _enrich_metadata(metadata, casaos_app)
 
         # Write output files (create app-specific subdirectory)
         app_output_dir = output_dir / casaos_app.id
