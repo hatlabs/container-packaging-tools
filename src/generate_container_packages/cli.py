@@ -59,7 +59,7 @@ REQUIRED_ROLE_TAG = "role::container-app"
 logger = logging.getLogger(__name__)
 
 
-def _enrich_metadata(metadata: dict, casaos_app: "CasaOSApp") -> None:
+def _enrich_metadata(metadata: dict, casaos_app: "CasaOSApp") -> None:  # noqa: F821
     """Enrich metadata with required fields that CasaOS doesn't provide.
 
     CasaOS app definitions often lack required HaLOS metadata fields.
