@@ -159,12 +159,29 @@ class MetadataTransformer:
                 "conversion_timestamp": datetime.now(UTC).isoformat(),
             }
 
+        # Handle description fields according to Debian conventions
+        # - description: one-line synopsis (max 80 chars)
+        # - long_description: extended description (multiple lines, preserved as-is)
+        description = casaos_app.tagline
+        long_description = casaos_app.description
+
+        if len(description) > 80:
+            # Synopsis too long - try to create meaningful short version
+            # and preserve full tagline in long_description
+            synopsis = self._create_synopsis(description)
+            # Prepend full tagline to long_description
+            if long_description:
+                long_description = f"{description}\n\n{long_description}"
+            else:
+                long_description = description
+            description = synopsis
+
         # Build metadata dictionary
         metadata = {
             "name": casaos_app.name,
             "package_name": package_name,
-            "description": casaos_app.tagline,
-            "long_description": casaos_app.description,
+            "description": description,
+            "long_description": long_description,
             "debian_section": debian_section,
             "homepage": casaos_app.homepage,
             "icon": casaos_app.icon,
@@ -194,6 +211,43 @@ class MetadataTransformer:
 
         mappings = self._category_data.get("mappings", {})
         return mappings.get(casaos_category, self._category_data.get("default", "misc"))
+
+    def _create_synopsis(self, text: str, max_length: int = 80) -> str:
+        """Create a short synopsis from a longer description.
+
+        Attempts to intelligently shorten text to fit Debian synopsis requirements
+        by extracting the first sentence or clause, or truncating at word boundary.
+
+        Args:
+            text: Original description text
+            max_length: Maximum length for synopsis (default 80)
+
+        Returns:
+            Shortened synopsis that fits within max_length
+        """
+        if len(text) <= max_length:
+            return text
+
+        # Try to find first sentence (ending with . ! ?)
+        for delimiter in [". ", "! ", "? "]:
+            if delimiter in text[:max_length + 20]:
+                first_sentence = text.split(delimiter)[0] + delimiter.rstrip()
+                if len(first_sentence) <= max_length:
+                    return first_sentence
+
+        # Try to break at clause boundaries (comma, semicolon, dash)
+        for delimiter in [", ", "; ", " - ", " – "]:
+            pos = text[:max_length].rfind(delimiter)
+            if pos > max_length * 0.6:  # At least 60% of target length
+                return text[:pos]
+
+        # Fall back to breaking at last complete word
+        truncate_pos = text[:max_length - 3].rfind(" ")
+        if truncate_pos > 0:
+            return text[:truncate_pos] + "..."
+
+        # Last resort: hard truncate
+        return text[:max_length - 3] + "..."
 
     def _infer_field_type(
         self, env_var: CasaOSEnvVar
