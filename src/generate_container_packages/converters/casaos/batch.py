@@ -12,12 +12,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..exceptions import ConversionError
 from .assets import AssetManager
 from .constants import (
     DEFAULT_ARCHITECTURE,
     DEFAULT_LICENSE,
     DEFAULT_MAINTAINER_DOMAIN,
-    DEFAULT_VERSION,
     REQUIRED_ROLE_TAG,
     get_default_mappings_dir,
 )
@@ -354,10 +354,23 @@ class BatchConverter:
         Args:
             metadata: Metadata dictionary to enrich (modified in-place)
             casaos_app: Parsed CasaOS application data
+
+        Note:
+            Version handling: Raises ConversionError if version wasn't
+            auto-extracted from Docker image tags. Apps without extractable
+            versions (e.g., :latest, main, master) must be skipped entirely.
+
+        Raises:
+            ConversionError: If no version was extracted from Docker image
         """
 
+        # Require version to be extracted - don't accept apps without versions
         if "version" not in metadata or not metadata["version"]:
-            metadata["version"] = DEFAULT_VERSION
+            raise ConversionError(
+                f"Cannot extract version from Docker image tag for app '{casaos_app.id}'. "
+                "Apps using :latest, :main, :master, or other non-versioned tags "
+                "cannot be packaged with meaningful version numbers."
+            )
 
         if "maintainer" not in metadata or not metadata["maintainer"]:
             dev_name = casaos_app.developer if casaos_app.developer else "Unknown"
