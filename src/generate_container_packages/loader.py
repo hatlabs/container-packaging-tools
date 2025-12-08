@@ -7,6 +7,11 @@ from typing import Any
 import yaml
 
 from generate_container_packages import __version__
+from generate_container_packages.naming import (
+    compute_package_name,
+    derive_app_id,
+    expand_dependencies,
+)
 
 
 class AppDefinition:
@@ -56,14 +61,15 @@ class AppDefinition:
         self.tool_version = __version__
 
 
-def load_input_files(directory: Path) -> AppDefinition:
+def load_input_files(directory: Path, prefix: str | None = None) -> AppDefinition:
     """Load all input files from directory into unified data model.
 
     Args:
         directory: Path to input directory
+        prefix: Optional package name prefix (e.g., "marine", "halos", "casaos")
 
     Returns:
-        AppDefinition with all loaded data
+        AppDefinition with all loaded data, including computed package_name
 
     Raises:
         FileNotFoundError: If required file is missing
@@ -73,6 +79,26 @@ def load_input_files(directory: Path) -> AppDefinition:
     metadata = load_yaml(directory / "metadata.yaml")
     compose = load_yaml(directory / "docker-compose.yml")
     config = load_yaml(directory / "config.yml")
+
+    # Derive app_id from directory name if not specified in metadata
+    if not metadata.get("app_id"):
+        metadata["app_id"] = derive_app_id(directory.name)
+
+    # Compute package_name from app_id and prefix
+    metadata["package_name"] = compute_package_name(
+        metadata["app_id"],
+        prefix=prefix,
+    )
+
+    # Expand @ references in dependency fields
+    if metadata.get("depends"):
+        metadata["depends"] = expand_dependencies(metadata["depends"], prefix=prefix)
+    if metadata.get("recommends"):
+        metadata["recommends"] = expand_dependencies(
+            metadata["recommends"], prefix=prefix
+        )
+    if metadata.get("suggests"):
+        metadata["suggests"] = expand_dependencies(metadata["suggests"], prefix=prefix)
 
     # Find optional icon file (SVG or PNG)
     icon_path = None
