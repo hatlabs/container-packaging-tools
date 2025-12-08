@@ -13,6 +13,24 @@ case "$1" in
         if [ ! -f "{{ paths.etc }}/env" ]; then
             cp "{{ paths.lib }}/env.user-template" "{{ paths.etc }}/env"
         fi
+{% if generate_secrets %}
+
+        # Generate secrets for keys that need auto-generation
+        ENV_FILE="{{ paths.etc }}/env"
+{% for key, generator in generate_secrets.items() %}
+{% if generator == "hex32" %}
+        # Generate {{ key }} if empty or not set
+        if ! grep -q "^{{ key }}=.\+" "$ENV_FILE" 2>/dev/null; then
+            NEW_SECRET=$(openssl rand -hex 32)
+            # Remove any existing empty entry
+            sed -i '/^{{ key }}=/d' "$ENV_FILE" 2>/dev/null || true
+            # Add new secret
+            echo "{{ key }}=$NEW_SECRET" >> "$ENV_FILE"
+            echo "Generated new {{ key }}"
+        fi
+{% endif %}
+{% endfor %}
+{% endif %}
 
         # Only interact with systemd if it's running (not in containers or minimal envs)
         if [ -d /run/systemd/system ]; then

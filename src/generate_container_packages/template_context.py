@@ -27,6 +27,7 @@ def build_context(app_def: AppDefinition) -> dict[str, Any]:
         "paths": _build_paths(package_name),
         "web_ui": metadata.get("web_ui", {}),
         "default_config": metadata.get("default_config", {}),
+        "generate_secrets": metadata.get("generate_secrets", {}),
         "timestamp": app_def.timestamp,
         "timestamp_rfc2822": app_def.timestamp_rfc2822,
         "date_only": app_def.date_only,
