@@ -10,4 +10,8 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
     volumes:
       - /var/lib/container-apps/simple-test-app-container/data:/usr/share/nginx/html:rw
-    restart: "no"
+    restart: unless-stopped
+    logging:
+      driver: journald
+      options:
+        tag: "{{.Name}}"

@@ -181,11 +181,107 @@ class TestComposeWarnings:
         # Check warnings are reasonable (may have some about missing files)
         # but shouldn't have critical errors
 
-    def test_warning_for_restart_policy(self, tmp_path):
-        """Test warning is generated for non-'no' restart policy."""
-        # This test would need a custom compose file with restart policy
-        # For now, we're testing the logic exists
-        pass  # Tested indirectly through integration
+
+class TestLifecycleConventions:
+    """Tests for container lifecycle convention validation."""
+
+    def test_valid_lifecycle_conventions(self):
+        """Test that compose with correct conventions passes."""
+        compose = validate_compose(VALID_FIXTURES / "simple-app" / "docker-compose.yml")
+        assert "services" in compose
+        # If we get here without error, conventions are valid
+
+    def test_error_for_invalid_restart_policy(self, tmp_path):
+        """Test that invalid restart policy raises ValueError."""
+        compose_content = """
+version: '3.8'
+services:
+  app:
+    image: nginx:alpine
+    restart: "no"
+    logging:
+      driver: journald
+      options:
+        tag: "{{.Name}}"
+"""
+        compose_path = tmp_path / "docker-compose.yml"
+        compose_path.write_text(compose_content)
+
+        with pytest.raises(ValueError) as exc_info:
+            validate_compose(compose_path)
+
+        assert "restart policy" in str(exc_info.value)
+        assert "unless-stopped" in str(exc_info.value)
+
+    def test_error_for_missing_logging_driver(self, tmp_path):
+        """Test that missing logging driver raises ValueError."""
+        compose_content = """
+version: '3.8'
+services:
+  app:
+    image: nginx:alpine
+    restart: unless-stopped
+"""
+        compose_path = tmp_path / "docker-compose.yml"
+        compose_path.write_text(compose_content)
+
+        with pytest.raises(ValueError) as exc_info:
+            validate_compose(compose_path)
+
+        assert "logging driver" in str(exc_info.value)
+        assert "journald" in str(exc_info.value)
+
+    def test_error_for_wrong_logging_driver(self, tmp_path):
+        """Test that non-journald logging driver raises ValueError."""
+        compose_content = """
+version: '3.8'
+services:
+  app:
+    image: nginx:alpine
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+"""
+        compose_path = tmp_path / "docker-compose.yml"
+        compose_path.write_text(compose_content)
+
+        with pytest.raises(ValueError) as exc_info:
+            validate_compose(compose_path)
+
+        assert "logging driver" in str(exc_info.value)
+        assert "journald" in str(exc_info.value)
+
+    def test_multiple_services_all_validated(self, tmp_path):
+        """Test that all services in compose are validated."""
+        compose_content = """
+version: '3.8'
+services:
+  main-app:
+    image: nginx:alpine
+    restart: unless-stopped
+    logging:
+      driver: journald
+      options:
+        tag: "{{.Name}}"
+  sidekick:
+    image: redis:alpine
+    restart: "no"
+    logging:
+      driver: json-file
+"""
+        compose_path = tmp_path / "docker-compose.yml"
+        compose_path.write_text(compose_content)
+
+        with pytest.raises(ValueError) as exc_info:
+            validate_compose(compose_path)
+
+        error_msg = str(exc_info.value)
+        # Should mention the sidekick service issues
+        assert "sidekick" in error_msg
+        assert "restart policy" in error_msg
+        assert "logging driver" in error_msg
 
 
 class TestCrossValidate:

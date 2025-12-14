@@ -21,6 +21,39 @@ Tooling for generating Debian packages from container application definitions.
 
 **Local Instructions**: For environment-specific instructions and configurations, see @CLAUDE.local.md (not committed to version control).
 
+## Container Lifecycle Conventions
+
+All container apps must follow these conventions in their `docker-compose.yml`:
+
+### Restart Policy
+
+```yaml
+services:
+  myapp:
+    restart: unless-stopped
+```
+
+**Rationale**: Docker handles per-container restarts (fast recovery for individual containers). Systemd is the fallback for compose process failures. This is critical for multi-service compose files where sidekick containers can crash independently.
+
+### Logging Driver
+
+```yaml
+services:
+  myapp:
+    logging:
+      driver: journald
+      options:
+        tag: "{{.Name}}"
+```
+
+**Rationale**: Provides unified logging via `journalctl -u <service>` with per-container filtering using `journalctl CONTAINER_NAME=<container>`. Eliminates log duplication (no separate json-file storage).
+
+### Validation
+
+The validator enforces these conventions as **blocking errors**. Apps that don't follow them will fail to build.
+
+See [halos-distro#49](https://github.com/hatlabs/halos-distro/issues/49) for the full design rationale.
+
 ## Git Workflow Policy
 
 **Branch Workflow:** Never push to main directly - always use feature branches and PRs.

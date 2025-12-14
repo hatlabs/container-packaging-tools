@@ -182,7 +182,52 @@ def validate_compose(path: Path) -> dict[str, Any]:
     if not data["services"]:
         raise ValueError("docker-compose.yml has no services defined")
 
+    # Validate container lifecycle conventions
+    _validate_lifecycle_conventions(data["services"])
+
     return data
+
+
+def _validate_lifecycle_conventions(services: dict[str, Any]) -> None:
+    """Validate that all services follow container lifecycle conventions.
+
+    All services must have:
+    - restart: unless-stopped (Docker handles per-container restarts)
+    - logging: driver: journald (unified logging with per-container filtering)
+
+    Args:
+        services: Dictionary of service definitions
+
+    Raises:
+        ValueError: If any service violates lifecycle conventions
+    """
+    errors: list[str] = []
+
+    for service_name, service in services.items():
+        # Check restart policy
+        restart = service.get("restart")
+        if restart != "unless-stopped":
+            errors.append(
+                f"Service '{service_name}' has restart policy '{restart}', "
+                f"must be 'unless-stopped'. Docker manages per-container restarts, "
+                f"systemd is fallback for compose process failures."
+            )
+
+        # Check logging driver
+        logging_config = service.get("logging", {})
+        logging_driver = logging_config.get("driver") if logging_config else None
+        if logging_driver != "journald":
+            errors.append(
+                f"Service '{service_name}' has logging driver '{logging_driver}', "
+                f"must be 'journald'. This provides unified logging with "
+                f"per-container filtering via journalctl."
+            )
+
+    if errors:
+        raise ValueError(
+            "docker-compose.yml violates container lifecycle conventions:\n"
+            + "\n".join(f"  - {e}" for e in errors)
+        )
 
 
 def validate_store(path: Path) -> StoreConfig:
@@ -215,19 +260,8 @@ def check_compose_warnings(compose: dict[str, Any]) -> list[ValidationWarning]:
     """
     warnings: list[ValidationWarning] = []
 
-    services = compose.get("services", {})
-
-    for service_name, service in services.items():
-        # Check for restart policy
-        restart = service.get("restart")
-        if restart and restart != "no":
-            warnings.append(
-                ValidationWarning(
-                    file="docker-compose.yml",
-                    message=f"Service '{service_name}' has restart policy '{restart}'",
-                    suggestion="Set restart: 'no' - systemd manages service lifecycle",
-                )
-            )
+    # Note: restart policy and logging driver are now validated as errors
+    # in _validate_lifecycle_conventions(), not as warnings here.
 
     # Check for named volumes
     volumes = compose.get("volumes", {})
