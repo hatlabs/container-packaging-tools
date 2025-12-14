@@ -712,7 +712,13 @@ class MetadataTransformer:
         for service in casaos_app.services:
             service_def: dict[str, Any] = {
                 "image": service.image,
-                "restart": "no",
+                "restart": "unless-stopped",
+                "logging": {
+                    "driver": "journald",
+                    "options": {
+                        "tag": "{{.Name}}",
+                    },
+                },
             }
 
             # Add environment variables (as dict)

@@ -26,7 +26,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    restart: "no"
+    restart: unless-stopped
+    logging:
+      driver: journald
+      options:
+        tag: "{{.Name}}"
     networks:
       - app-network
 
