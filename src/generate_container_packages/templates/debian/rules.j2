@@ -27,6 +27,14 @@ override_dh_auto_install:
 		debian/{{ package.name }}/{{ paths.pixmaps }}/{{ package.name }}.{{ icon_extension }}
 {% endif %}
 
+{% if has_assets %}
+	# Install assets
+{% for asset in asset_files %}
+	install -D -m 644 assets/{{ asset }} \
+		debian/{{ package.name }}/{{ paths.lib }}/{{ asset }}
+{% endfor %}
+{% endif %}
+
 	# Install systemd service file
 	install -D -m 644 debian/{{ package.name }}.service \
 		debian/{{ package.name }}/{{ paths.systemd }}/{{ package.name }}.service

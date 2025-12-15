@@ -31,6 +31,8 @@ class AppDefinition:
         input_dir: Path,
         icon_path: Path | None = None,
         screenshot_paths: list[Path] | None = None,
+        assets_dir: Path | None = None,
+        asset_files: list[Path] | None = None,
     ):
         """Initialize AppDefinition.
 
@@ -41,6 +43,8 @@ class AppDefinition:
             input_dir: Path to input directory
             icon_path: Path to icon file (if exists)
             screenshot_paths: List of paths to screenshot files
+            assets_dir: Path to assets directory (if exists)
+            asset_files: List of asset file paths relative to assets_dir
         """
         self.metadata = metadata
         self.compose = compose
@@ -48,6 +52,8 @@ class AppDefinition:
         self.input_dir = input_dir
         self.icon_path = icon_path
         self.screenshot_paths = screenshot_paths or []
+        self.assets_dir = assets_dir
+        self.asset_files = asset_files or []
 
         # Computed fields
         now = datetime.now(UTC)
@@ -119,6 +125,17 @@ def load_input_files(directory: Path, prefix: str | None = None) -> AppDefinitio
     screenshot_patterns = ["screenshot*.png", "screenshot*.jpg"]
     screenshot_paths = find_optional_files(directory, screenshot_patterns)
 
+    # Find optional assets directory
+    assets_dir = directory / "assets"
+    asset_files: list[Path] = []
+    if assets_dir.is_dir():
+        # Enumerate all files in assets directory (recursively)
+        asset_files = sorted(
+            f.relative_to(assets_dir) for f in assets_dir.rglob("*") if f.is_file()
+        )
+    else:
+        assets_dir = None
+
     return AppDefinition(
         metadata=metadata,
         compose=compose,
@@ -126,6 +143,8 @@ def load_input_files(directory: Path, prefix: str | None = None) -> AppDefinitio
         input_dir=directory,
         icon_path=icon_path,
         screenshot_paths=screenshot_paths,
+        assets_dir=assets_dir,
+        asset_files=asset_files,
     )
 
 
