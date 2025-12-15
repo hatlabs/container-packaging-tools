@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from generate_container_packages.loader import AppDefinition
 from generate_container_packages.template_context import (
     _extract_volume_directories,
@@ -471,3 +473,336 @@ class TestExtractVolumeDirectories:
         dirs = _extract_volume_directories(compose)
         assert "${CONTAINER_DATA_ROOT}/config" in dirs
         assert len(dirs) == 1
+
+
+class TestParseServiceUser:
+    """Tests for _parse_service_user function."""
+
+    def test_parse_numeric_user(self):
+        """Test parsing numeric user field like '1000:1000'."""
+        from generate_container_packages.template_context import _parse_service_user
+
+        result = _parse_service_user("1000:1000")
+        assert result is not None
+        uid, gid = result
+        assert uid == 1000
+        assert gid == 1000
+
+    def test_parse_different_uid_gid(self):
+        """Test parsing different UID and GID."""
+        from generate_container_packages.template_context import _parse_service_user
+
+        result = _parse_service_user("472:0")
+        assert result is not None
+        uid, gid = result
+        assert uid == 472
+        assert gid == 0
+
+    def test_parse_empty_user(self):
+        """Test parsing empty/None user field (root)."""
+        from generate_container_packages.template_context import _parse_service_user
+
+        result = _parse_service_user(None)
+        assert result is None
+
+        result = _parse_service_user("")
+        assert result is None
+
+    def test_parse_uid_only(self):
+        """Test parsing user with UID only (no GID)."""
+        from generate_container_packages.template_context import _parse_service_user
+
+        result = _parse_service_user("1000")
+        assert result is not None
+        uid, gid = result
+        assert uid == 1000
+        assert gid is None
+
+    def test_invalid_user_colon_only(self):
+        """Test that ':' (undefined env vars) raises error."""
+        from generate_container_packages.template_context import (
+            VolumeOwnershipError,
+            _parse_service_user,
+        )
+
+        with pytest.raises(VolumeOwnershipError, match="undefined"):
+            _parse_service_user(":")
+
+    def test_invalid_user_empty_uid(self):
+        """Test that ':1000' (empty UID) raises error."""
+        from generate_container_packages.template_context import (
+            VolumeOwnershipError,
+            _parse_service_user,
+        )
+
+        with pytest.raises(VolumeOwnershipError, match="undefined"):
+            _parse_service_user(":1000")
+
+    def test_invalid_user_empty_gid(self):
+        """Test that '1000:' (empty GID) raises error."""
+        from generate_container_packages.template_context import (
+            VolumeOwnershipError,
+            _parse_service_user,
+        )
+
+        with pytest.raises(VolumeOwnershipError, match="undefined"):
+            _parse_service_user("1000:")
+
+
+class TestExtractVolumeOwnership:
+    """Tests for volume ownership extraction from docker compose config."""
+
+    def test_no_user_field_returns_none_ownership(self):
+        """Test that services without user field get None ownership (root)."""
+        from generate_container_packages.template_context import (
+            _extract_volume_ownership,
+        )
+
+        compose_config = {
+            "services": {
+                "app": {
+                    "image": "nginx",
+                    "volumes": [
+                        {"type": "bind", "source": "/data/app", "target": "/app"}
+                    ],
+                }
+            }
+        }
+
+        volumes = _extract_volume_ownership(compose_config)
+        assert len(volumes) == 1
+        assert volumes[0].path == "/data/app"
+        assert volumes[0].uid is None
+        assert volumes[0].gid is None
+
+    def test_fixed_user_field(self):
+        """Test extracting ownership from fixed user field."""
+        from generate_container_packages.template_context import (
+            _extract_volume_ownership,
+        )
+
+        compose_config = {
+            "services": {
+                "grafana": {
+                    "image": "grafana/grafana",
+                    "user": "472:0",
+                    "volumes": [
+                        {
+                            "type": "bind",
+                            "source": "/data/grafana",
+                            "target": "/var/lib/grafana",
+                        }
+                    ],
+                }
+            }
+        }
+
+        volumes = _extract_volume_ownership(compose_config)
+        assert len(volumes) == 1
+        assert volumes[0].path == "/data/grafana"
+        assert volumes[0].uid == 472
+        assert volumes[0].gid == 0
+
+    def test_multi_service_different_users(self):
+        """Test multiple services with different users."""
+        from generate_container_packages.template_context import (
+            _extract_volume_ownership,
+        )
+
+        compose_config = {
+            "services": {
+                "app": {
+                    "image": "myapp",
+                    "user": "1000:1000",
+                    "volumes": [
+                        {"type": "bind", "source": "/data/app", "target": "/app"}
+                    ],
+                },
+                "db": {
+                    "image": "postgres",
+                    # No user field - runs as root
+                    "volumes": [
+                        {
+                            "type": "bind",
+                            "source": "/data/db",
+                            "target": "/var/lib/postgresql",
+                        }
+                    ],
+                },
+            }
+        }
+
+        volumes = _extract_volume_ownership(compose_config)
+        assert len(volumes) == 2
+
+        app_vol = next(v for v in volumes if v.path == "/data/app")
+        assert app_vol.uid == 1000
+        assert app_vol.gid == 1000
+
+        db_vol = next(v for v in volumes if v.path == "/data/db")
+        assert db_vol.uid is None
+        assert db_vol.gid is None
+
+    def test_invalid_user_raises_error(self):
+        """Test that malformed user field raises error."""
+        from generate_container_packages.template_context import (
+            VolumeOwnershipError,
+            _extract_volume_ownership,
+        )
+
+        compose_config = {
+            "services": {
+                "app": {
+                    "image": "myapp",
+                    "user": ":",  # Invalid - undefined env vars
+                    "volumes": [
+                        {"type": "bind", "source": "/data/app", "target": "/app"}
+                    ],
+                }
+            }
+        }
+
+        with pytest.raises(VolumeOwnershipError):
+            _extract_volume_ownership(compose_config)
+
+    def test_short_format_volumes(self):
+        """Test extracting ownership with short format volumes."""
+        from generate_container_packages.template_context import (
+            _extract_volume_ownership,
+        )
+
+        compose_config = {
+            "services": {
+                "app": {
+                    "image": "myapp",
+                    "user": "1000:1000",
+                    "volumes": [
+                        "/data/config:/app/config",
+                        "/data/data:/app/data:rw",
+                    ],
+                }
+            }
+        }
+
+        volumes = _extract_volume_ownership(compose_config)
+        assert len(volumes) == 2
+        paths = [v.path for v in volumes]
+        assert "/data/config" in paths
+        assert "/data/data" in paths
+        # All should have same ownership from service user
+        for vol in volumes:
+            assert vol.uid == 1000
+            assert vol.gid == 1000
+
+    def test_filters_system_paths(self):
+        """Test that system paths are filtered out."""
+        from generate_container_packages.template_context import (
+            _extract_volume_ownership,
+        )
+
+        compose_config = {
+            "services": {
+                "app": {
+                    "image": "myapp",
+                    "user": "1000:1000",
+                    "volumes": [
+                        "/data/app:/app",
+                        "/dev/sda:/dev/sda",
+                        "/var/run/docker.sock:/var/run/docker.sock",
+                    ],
+                }
+            }
+        }
+
+        volumes = _extract_volume_ownership(compose_config)
+        assert len(volumes) == 1
+        assert volumes[0].path == "/data/app"
+
+    def test_deduplicates_volumes(self):
+        """Test that duplicate volumes are deduplicated."""
+        from generate_container_packages.template_context import (
+            _extract_volume_ownership,
+        )
+
+        compose_config = {
+            "services": {
+                "app1": {
+                    "image": "app1",
+                    "user": "1000:1000",
+                    "volumes": ["/data/shared:/app"],
+                },
+                "app2": {
+                    "image": "app2",
+                    "user": "1000:1000",
+                    "volumes": ["/data/shared:/other"],
+                },
+            }
+        }
+
+        volumes = _extract_volume_ownership(compose_config)
+        assert len(volumes) == 1
+        assert volumes[0].path == "/data/shared"
+
+    def test_env_var_substitution_in_user(self):
+        """Test that env vars in user field are resolved from default_config."""
+        from generate_container_packages.template_context import (
+            _extract_volume_ownership,
+        )
+
+        compose_config = {
+            "services": {
+                "app": {
+                    "image": "myapp",
+                    "user": "${PUID}:${PGID}",
+                    "volumes": ["/data/app:/app"],
+                }
+            }
+        }
+        default_config = {"PUID": "1000", "PGID": "1000"}
+
+        volumes = _extract_volume_ownership(compose_config, default_config)
+        assert len(volumes) == 1
+        assert volumes[0].uid == 1000
+        assert volumes[0].gid == 1000
+
+    def test_env_var_substitution_missing_vars_raises_error(self):
+        """Test that undefined env vars in user field raise error."""
+        from generate_container_packages.template_context import (
+            VolumeOwnershipError,
+            _extract_volume_ownership,
+        )
+
+        compose_config = {
+            "services": {
+                "app": {
+                    "image": "myapp",
+                    "user": "${PUID}:${PGID}",  # Not in default_config
+                    "volumes": ["/data/app:/app"],
+                }
+            }
+        }
+
+        with pytest.raises(VolumeOwnershipError, match="undefined"):
+            _extract_volume_ownership(compose_config, {})
+
+
+class TestVolumeInfo:
+    """Tests for VolumeInfo dataclass."""
+
+    def test_volume_info_creation(self):
+        """Test creating VolumeInfo with all fields."""
+        from generate_container_packages.template_context import VolumeInfo
+
+        vol = VolumeInfo(path="/data/app", uid=1000, gid=1000)
+        assert vol.path == "/data/app"
+        assert vol.uid == 1000
+        assert vol.gid == 1000
+
+    def test_volume_info_none_ownership(self):
+        """Test VolumeInfo with None ownership (root)."""
+        from generate_container_packages.template_context import VolumeInfo
+
+        vol = VolumeInfo(path="/data/app", uid=None, gid=None)
+        assert vol.path == "/data/app"
+        assert vol.uid is None
+        assert vol.gid is None

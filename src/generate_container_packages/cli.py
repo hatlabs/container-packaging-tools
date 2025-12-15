@@ -16,6 +16,7 @@ from generate_container_packages import __version__
 from generate_container_packages.builder import BuildError, build_package
 from generate_container_packages.loader import load_input_files
 from generate_container_packages.renderer import render_all_templates
+from generate_container_packages.template_context import VolumeOwnershipError
 from generate_container_packages.validator import validate_input_directory
 
 if TYPE_CHECKING:
@@ -632,6 +633,22 @@ def main() -> int:
         if args.debug:
             traceback.print_exc()
         return EXIT_TEMPLATE_ERROR
+
+    except VolumeOwnershipError as e:
+        logger.error(f"Volume ownership detection failed: {e}")
+        print("\nERROR: Volume ownership detection failed\n", file=sys.stderr)
+        print(str(e), file=sys.stderr)
+        print(
+            "\nHint: If using 'user: \"${PUID}:${PGID}\"' in docker-compose.yml,",
+            file=sys.stderr,
+        )
+        print(
+            "ensure PUID and PGID are defined in metadata.yaml default_config.",
+            file=sys.stderr,
+        )
+        if args.debug:
+            traceback.print_exc()
+        return EXIT_VALIDATION_ERROR
 
     except BuildError as e:
         logger.error(f"Package build failed: {e}")

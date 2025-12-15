@@ -53,6 +53,61 @@ class TestGenerateEnvTemplate:
         # No app config means no commented values
         assert "CONTAINER_DATA_ROOT" not in user_content
 
+    def test_no_system_managed_puid_pgid_tz(self, tmp_path):
+        """Test that PUID, PGID, TZ are NOT injected as system-managed variables.
+
+        Apps that need these must define them in their own default_config.
+        Only CONTAINER_DATA_ROOT should be system-managed.
+        """
+        app_def = mock.Mock(spec=AppDefinition)
+        app_def.metadata = {"package_name": "test-app-container"}
+
+        generate_env_template(app_def, tmp_path)
+
+        env_file = tmp_path / "env.template"
+        content = env_file.read_text()
+
+        # CONTAINER_DATA_ROOT should be present (system-managed)
+        assert "CONTAINER_DATA_ROOT=" in content
+
+        # PUID, PGID, TZ should NOT be present as system-managed
+        # (apps define these in their own default_config if needed)
+        lines = content.split("\n")
+        system_section_lines = []
+        in_system_section = False
+        for line in lines:
+            if "System-managed" in line:
+                in_system_section = True
+            elif "Application configuration" in line:
+                in_system_section = False
+            elif in_system_section:
+                system_section_lines.append(line)
+
+        system_content = "\n".join(system_section_lines)
+        assert "PUID=" not in system_content, "PUID should not be system-managed"
+        assert "PGID=" not in system_content, "PGID should not be system-managed"
+        assert "TZ=" not in system_content, "TZ should not be system-managed"
+
+    def test_app_defined_puid_pgid(self, tmp_path):
+        """Test that apps can define PUID/PGID in their own default_config."""
+        app_def = mock.Mock(spec=AppDefinition)
+        app_def.metadata = {
+            "package_name": "test-app-container",
+            "default_config": {
+                "PUID": "1000",
+                "PGID": "1000",
+            },
+        }
+
+        generate_env_template(app_def, tmp_path)
+
+        env_file = tmp_path / "env.template"
+        content = env_file.read_text()
+
+        # PUID/PGID should appear in application config section, not system section
+        assert 'PUID="1000"' in content
+        assert 'PGID="1000"' in content
+
     def test_simple_config(self, tmp_path):
         """Test generating env.template with simple config."""
         app_def = mock.Mock(spec=AppDefinition)

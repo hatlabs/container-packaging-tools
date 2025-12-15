@@ -1,9 +1,174 @@
 """Template context builder for Jinja2 rendering."""
 
+import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from generate_container_packages.loader import AppDefinition
+
+
+class VolumeOwnershipError(Exception):
+    """Raised when volume ownership cannot be determined due to invalid user field."""
+
+
+@dataclass
+class VolumeInfo:
+    """Information about a bind mount volume including ownership."""
+
+    path: str
+    uid: int | None
+    gid: int | None
+
+
+def _parse_service_user(user: str | None) -> tuple[int, int | None] | None:
+    """Parse the user field from docker compose config.
+
+    Args:
+        user: User field value (e.g., "1000:1000", "472:0", "1000", None, "")
+
+    Returns:
+        Tuple of (uid, gid) where gid may be None if not specified,
+        or None if user is empty/None (meaning root)
+
+    Raises:
+        VolumeOwnershipError: If user field is malformed (e.g., ":", ":1000", "1000:")
+            indicating undefined environment variables
+    """
+    if user is None or user == "":
+        return None
+
+    # Check for malformed user field (undefined env vars)
+    if ":" in user:
+        parts = user.split(":", 1)
+        uid_str, gid_str = parts[0], parts[1]
+
+        # Check for empty parts (indicates undefined env vars)
+        if uid_str == "" or gid_str == "":
+            raise VolumeOwnershipError(
+                f"user field '{user}' contains undefined environment variables. "
+                "Ensure PUID/PGID are defined in default_config."
+            )
+
+        try:
+            uid = int(uid_str)
+            gid = int(gid_str)
+            return (uid, gid)
+        except ValueError as e:
+            raise VolumeOwnershipError(
+                f"user field '{user}' contains non-numeric values"
+            ) from e
+    else:
+        # UID only, no GID
+        try:
+            uid = int(user)
+            return (uid, None)
+        except ValueError as e:
+            raise VolumeOwnershipError(
+                f"user field '{user}' is not a valid numeric UID"
+            ) from e
+
+
+def _substitute_env_vars(value: str, env_vars: dict[str, str]) -> str:
+    """Substitute environment variables in a string.
+
+    Handles both ${VAR} and $VAR syntax, with optional default values ${VAR:-default}.
+
+    Args:
+        value: String potentially containing env var references
+        env_vars: Dictionary of environment variable values
+
+    Returns:
+        String with env vars substituted
+    """
+
+    def replace_var(match: re.Match[str]) -> str:
+        # Handle ${VAR:-default} or ${VAR}
+        var_expr = match.group(1) or match.group(2)
+        if ":-" in var_expr:
+            var_name, default = var_expr.split(":-", 1)
+        else:
+            var_name = var_expr
+            default = ""
+        return env_vars.get(var_name, default)
+
+    # Match ${VAR:-default}, ${VAR}, or $VAR
+    pattern = r"\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)"
+    return re.sub(pattern, replace_var, value)
+
+
+def _extract_volume_ownership(
+    compose_config: dict[str, Any], default_config: dict[str, str] | None = None
+) -> list[VolumeInfo]:
+    """Extract volume paths with their ownership from compose config.
+
+    This function parses the docker-compose services and extracts bind mount paths
+    along with their owning UID:GID based on each service's `user` field.
+    Environment variables in the user field are resolved using default_config.
+
+    Args:
+        compose_config: Parsed docker-compose.yml contents
+        default_config: Default environment variables for substitution
+
+    Returns:
+        List of VolumeInfo objects with path and ownership (uid/gid may be None for root)
+
+    Raises:
+        VolumeOwnershipError: If a service has a malformed user field
+    """
+    volumes: list[VolumeInfo] = []
+    seen_paths: set[str] = set()
+    env_vars = default_config or {}
+
+    services = compose_config.get("services", {})
+
+    for _service_name, service_config in services.items():
+        if not isinstance(service_config, dict):
+            continue
+
+        # Parse user field for this service, resolving any env vars
+        user_field = service_config.get("user")
+        if user_field and isinstance(user_field, str):
+            user_field = _substitute_env_vars(user_field, env_vars)
+        ownership = _parse_service_user(user_field)
+
+        if ownership is not None:
+            uid, gid = ownership
+        else:
+            uid, gid = None, None
+
+        # Extract volumes for this service
+        service_volumes = service_config.get("volumes", [])
+
+        for volume in service_volumes:
+            source = _extract_volume_source(volume)
+            if source and _is_bindable_path(source) and source not in seen_paths:
+                seen_paths.add(source)
+                volumes.append(VolumeInfo(path=source, uid=uid, gid=gid))
+
+    return volumes
+
+
+def _extract_volume_source(volume: dict[str, Any] | str) -> str | None:
+    """Extract the source path from a volume specification.
+
+    Args:
+        volume: Volume specification (dict for long format, str for short format)
+
+    Returns:
+        Source path or None if not extractable
+    """
+    if isinstance(volume, dict):
+        # Long format: {type: bind, source: ..., target: ...}
+        if volume.get("type") == "bind":
+            return volume.get("source")
+        return None
+    elif isinstance(volume, str):
+        # Short format: "source:target" or "source:target:ro"
+        parts = volume.split(":")
+        if len(parts) >= 2:
+            return parts[0]
+    return None
 
 
 def build_context(app_def: AppDefinition) -> dict[str, Any]:
@@ -84,6 +249,7 @@ def _build_service_context(
     Returns:
         Dictionary with systemd service configuration
     """
+    default_config = metadata.get("default_config", {})
     return {
         "name": f"{package_name}.service",
         "description": f"{metadata['name']} Container",
@@ -91,7 +257,7 @@ def _build_service_context(
         "env_defaults_file": f"/etc/container-apps/{package_name}/env.defaults",
         "env_file": f"/etc/container-apps/{package_name}/env",
         "runtime_env_file": f"/run/container-apps/{package_name}/runtime.env",
-        "volume_directories": _extract_volume_directories(compose),
+        "volume_directories": _extract_volume_ownership(compose, default_config),
     }
 
 
