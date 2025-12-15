@@ -20,12 +20,8 @@ case "$1" in
         # Create data directories with proper ownership for non-root containers
         # Only set ownership on newly created directories to avoid overwriting user changes
         {% for vol in service.volume_directories %}
-        {% if vol.path.startswith('${CONTAINER_DATA_ROOT}') or vol.path.startswith('$CONTAINER_DATA_ROOT') %}
-        # Resolve CONTAINER_DATA_ROOT in path
-        VOL_PATH=$(echo "{{ vol.path }}" | envsubst)
-        {% else %}
-        VOL_PATH="{{ vol.path }}"
-        {% endif %}
+        # Resolve any environment variables in path using shell-native expansion
+        eval VOL_PATH=\"{{ vol.path }}\"
         if [ ! -d "$VOL_PATH" ]; then
             mkdir -p "$VOL_PATH"
             {% if vol.uid is not none and vol.gid is not none %}

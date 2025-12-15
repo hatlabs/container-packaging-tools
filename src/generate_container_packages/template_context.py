@@ -1,5 +1,6 @@
 """Template context builder for Jinja2 rendering."""
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -80,7 +81,6 @@ def _substitute_env_vars(value: str, env_vars: dict[str, str]) -> str:
     Returns:
         String with env vars substituted
     """
-    import re
 
     def replace_var(match: re.Match[str]) -> str:
         # Handle ${VAR:-default} or ${VAR}
