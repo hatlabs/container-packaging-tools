@@ -14,6 +14,28 @@ case "$1" in
             cp "{{ paths.lib }}/env.user-template" "{{ paths.etc }}/env"
         fi
 
+        # Source environment to resolve CONTAINER_DATA_ROOT
+        . "{{ paths.etc }}/env.defaults"
+
+        # Create data directories with proper ownership for non-root containers
+        # Only set ownership on newly created directories to avoid overwriting user changes
+        {% for vol in service.volume_directories %}
+        {% if vol.path.startswith('${CONTAINER_DATA_ROOT}') or vol.path.startswith('$CONTAINER_DATA_ROOT') %}
+        # Resolve CONTAINER_DATA_ROOT in path
+        VOL_PATH=$(echo "{{ vol.path }}" | envsubst)
+        {% else %}
+        VOL_PATH="{{ vol.path }}"
+        {% endif %}
+        if [ ! -d "$VOL_PATH" ]; then
+            mkdir -p "$VOL_PATH"
+            {% if vol.uid is not none and vol.gid is not none %}
+            chown {{ vol.uid }}:{{ vol.gid }} "$VOL_PATH"
+            {% elif vol.uid is not none %}
+            chown {{ vol.uid }} "$VOL_PATH"
+            {% endif %}
+        fi
+        {% endfor %}
+
         # Only interact with systemd if it's running (not in containers or minimal envs)
         if [ -d /run/systemd/system ]; then
             # Reload systemd to recognize new service

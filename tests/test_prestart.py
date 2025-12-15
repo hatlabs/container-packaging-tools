@@ -20,6 +20,7 @@ class TestGetHomarrUrlExpression:
         result = get_homarr_url_expression(web_ui, default_config)
 
         # Should use APP_PORT with fallback to 3000
+        assert result is not None
         assert "http://" in result
         assert "${APP_PORT:-3000}" in result
         assert "${HOSTNAME}.local" in result
@@ -31,6 +32,7 @@ class TestGetHomarrUrlExpression:
 
         result = get_homarr_url_expression(web_ui, default_config)
 
+        assert result is not None
         assert "https://" in result
         assert ":8443" in result
 
@@ -41,6 +43,7 @@ class TestGetHomarrUrlExpression:
 
         result = get_homarr_url_expression(web_ui, default_config)
 
+        assert result is not None
         assert "/admin" in result
 
     def test_default_protocol_is_http(self):
@@ -50,6 +53,7 @@ class TestGetHomarrUrlExpression:
 
         result = get_homarr_url_expression(web_ui, default_config)
 
+        assert result is not None
         assert "http://" in result
 
     def test_disabled_web_ui_returns_none(self):

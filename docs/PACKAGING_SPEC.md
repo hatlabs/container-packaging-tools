@@ -285,6 +285,36 @@ The tool must support Docker Compose file format version 3.8 or later, including
 - Network definitions
 - No restart policies (lifecycle managed by systemd)
 
+### TR9: Bind Mount Permissions
+
+The tool must handle bind mount directory permissions for non-root containers:
+
+**Convention**: If a container runs as a non-root user, the docker-compose file MUST specify the `user` field:
+
+- `user: "${PUID}:${PGID}"` - for containers supporting configurable UID/GID (PUID/PGID defined in `default_config`)
+- `user: "472:0"` - for containers with fixed UID (hardcoded value)
+- No `user` field - container runs as root and handles its own permissions
+
+**Build-time Detection**:
+
+1. Run `docker compose config --format json` with environment variables from `default_config`
+2. Parse resolved `user` field for each service
+3. Map each service's volumes to their owning UID:GID
+4. If `user` is not set or evaluates to root (0:0 or empty) - no ownership handling needed
+
+**Install-time Behavior (postinst)**:
+
+- Create bind mount data directories with the resolved UID:GID ownership
+- Skip ownership changes for root services (they can manage their own permissions)
+- Use `chown -R` only if the directory is newly created (don't override existing files)
+
+**Benefits**:
+
+- **Auto-detection**: `docker compose config` resolves all environment variables, giving actual UID:GID values
+- **No image inspection**: Convention requires `user` in compose for non-root containers
+- **Per-service volumes**: Each service's volumes get correct ownership based on that service's `user`
+- **CasaOS apps**: `user: "${PUID}:${PGID}"` resolved at build time with default values
+
 ## Non-Functional Requirements
 
 ### NFR1: Performance

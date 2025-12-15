@@ -173,12 +173,11 @@ def generate_env_template(app_def: AppDefinition, source_dir: Path) -> None:
     default_config = app_def.metadata.get("default_config", {})
 
     # Generate env.template (full defaults for env.defaults)
+    # Only CONTAINER_DATA_ROOT is system-managed
+    # Apps define their own PUID/PGID/TZ in default_config if needed
     lines = [
         "# System-managed variables (do not modify)\n",
         f'CONTAINER_DATA_ROOT="/var/lib/container-apps/{package_name}/data"\n',
-        "PUID=1000\n",
-        "PGID=1000\n",
-        'TZ="UTC"\n',
         "\n",
     ]
 
@@ -205,14 +204,10 @@ def generate_env_template(app_def: AppDefinition, source_dir: Path) -> None:
     env_template.write_text("".join(lines), encoding="utf-8")
 
     # Generate env.user-template (commented defaults for user env file)
+    # No system variables here - apps define their own PUID/PGID/TZ if needed
     user_lines = [
         "# User environment overrides\n",
         "# Uncomment and modify values to override defaults from env.defaults\n",
-        "\n",
-        "# System variables (can be overridden if needed)\n",
-        "#PUID=1000\n",
-        "#PGID=1000\n",
-        '#TZ="UTC"\n',
         "\n",
     ]
 

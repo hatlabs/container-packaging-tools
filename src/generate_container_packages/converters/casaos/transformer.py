@@ -264,7 +264,7 @@ class MetadataTransformer:
             version = self._extract_version_from_image(primary_service.image)
 
         # Update source_metadata to track version extraction
-        if source_metadata and version:
+        if source_metadata and version and primary_service:
             source_metadata["version_source"] = "auto-extracted"
             source_metadata["docker_image"] = primary_service.image
 

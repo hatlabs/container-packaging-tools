@@ -182,11 +182,30 @@ The Loader produces a unified data structure containing:
 The context passed to templates includes:
 - package: All package metadata (name, version, description, etc.)
 - service: systemd service configuration
+  - volume_directories: List of VolumeInfo objects with path and uid:gid ownership
 - paths: Standard installation paths
 - web_ui: Web interface configuration
 - default_config: Default environment variables
 - timestamp: Build timestamp
 - tool_version: Tool version for tracking
+
+**Volume Ownership Detection**:
+At build time, the tool detects bind mount ownership requirements:
+
+1. **Extract environment variables**: Collect values from app's `default_config` (e.g., PUID, PGID if defined)
+2. **Add system variables**: Include CONTAINER_DATA_ROOT for path resolution
+3. **Run `docker compose config`**: Execute with collected env vars to resolve all substitutions
+4. **Parse JSON output**: Extract `user` field for each service (resolved to actual UID:GID)
+5. **Map volumes to ownership**: For each service's volumes, record the owning UID:GID
+6. **Pass to templates**: volume_directories now contains both path and ownership info
+
+```
+VolumeInfo {
+    path: str           # e.g., "${CONTAINER_DATA_ROOT}/data"
+    uid: int | None     # e.g., 1000 (None = root/no chown needed)
+    gid: int | None     # e.g., 1000 (None = root/no chown needed)
+}
+```
 
 **Interactions**:
 - Loads templates from `/usr/share/container-packaging-tools/templates/`
@@ -270,12 +289,13 @@ The metadata model contains all package-level information:
 
 **Structure**:
 Standard Docker Compose v3.8+ format containing:
-- Services: Container definitions with images, ports, volumes, environment
+- Services: Container definitions with images, ports, volumes, environment, user
 - Volumes: Bind mounts for persistent data (not named volumes)
 - Networks: Custom networks (optional)
 
 **Usage**:
-- Copied verbatim to package (not parsed or modified)
+- Parsed at build time to extract volume directories and UID/GID ownership
+- Copied to package with injected Homarr labels
 - Used by systemd service for container lifecycle
 - Environment variables substituted at runtime from env file
 
@@ -285,9 +305,22 @@ Standard Docker Compose v3.8+ format containing:
 - Container name should be meaningful for management
 - No restart policy (systemd manages lifecycle)
 
+**User Field Convention** (for bind mount permissions):
+If a container runs as a non-root user, the `user` field MUST be specified:
+- `user: "${PUID}:${PGID}"` - for configurable UID/GID containers
+- `user: "472:0"` - for fixed-UID containers (e.g., Grafana)
+- No `user` field - container runs as root (handles own permissions)
+
 **System-Managed Variables**:
 The following environment variables are automatically injected into the env file:
 - `CONTAINER_DATA_ROOT`: Base path for container data storage (`/var/lib/container-apps/<package>/data`). Use this for all bind mount paths to keep container data separate from package files.
+
+**App-Defined Variables for UID/GID**:
+Apps that need configurable user IDs must define these in their own `default_config`:
+- `PUID`: User ID for container processes (app defines default, e.g., "1000")
+- `PGID`: Group ID for container processes (app defines default, e.g., "1000")
+
+These are NOT system-managed - each app chooses whether to support configurable UID/GID.
 
 ### Configuration Schema Model
 
