@@ -1,5 +1,6 @@
 """Homarr Docker label generation for container apps."""
 
+from pathlib import Path
 from typing import Any
 
 # Mapping from debtags to Homarr categories
@@ -75,11 +76,14 @@ def get_category_from_tags(tags: list[str]) -> str:
     return DEFAULT_CATEGORY
 
 
-def generate_homarr_labels(metadata: dict[str, Any]) -> dict[str, str]:
+def generate_homarr_labels(
+    metadata: dict[str, Any], icon_path: Path | None = None
+) -> dict[str, str]:
     """Generate Homarr Docker labels from metadata.
 
     Args:
         metadata: Package metadata dictionary
+        icon_path: Path to auto-detected icon file (optional)
 
     Returns:
         Dictionary of Homarr labels (empty if web_ui is disabled or missing)
@@ -104,12 +108,16 @@ def generate_homarr_labels(metadata: dict[str, Any]) -> dict[str, str]:
         "homarr.category": category,
     }
 
-    # Add icon reference if present
+    # Add icon reference if present (from metadata or auto-detected icon_path)
+    package_name = metadata.get("package_name", "")
     if metadata.get("icon"):
-        # Icons are installed to /usr/share/pixmaps/
-        package_name = metadata.get("package_name", "")
+        # Explicit icon in metadata
         icon = metadata.get("icon", "")
         ext = icon.split(".")[-1] if "." in icon else "png"
+        labels["homarr.icon"] = f"/usr/share/pixmaps/{package_name}.{ext}"
+    elif icon_path is not None:
+        # Auto-detected icon file
+        ext = icon_path.suffix.lstrip(".")
         labels["homarr.icon"] = f"/usr/share/pixmaps/{package_name}.{ext}"
 
     return labels

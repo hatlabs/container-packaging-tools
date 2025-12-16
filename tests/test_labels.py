@@ -1,5 +1,7 @@
 """Unit tests for labels module."""
 
+from pathlib import Path
+
 from generate_container_packages.labels import (
     find_port_env_var,
     generate_homarr_labels,
@@ -135,7 +137,7 @@ class TestGenerateHomarrLabels:
         assert labels == {}
 
     def test_labels_include_icon_reference(self):
-        """Test that labels include icon reference if icon exists."""
+        """Test that labels include icon reference if icon exists in metadata."""
         metadata = {
             "name": "Test App",
             "package_name": "test-container",
@@ -150,7 +152,67 @@ class TestGenerateHomarrLabels:
         labels = generate_homarr_labels(metadata)
 
         # Icon should be referenced
-        assert "homarr.icon" in labels or "homarr.enable" in labels
+        assert "homarr.icon" in labels
+        assert labels["homarr.icon"] == "/usr/share/pixmaps/test-container.svg"
+
+    def test_labels_include_auto_detected_icon(self):
+        """Test that labels include icon reference from auto-detected icon_path."""
+        metadata = {
+            "name": "InfluxDB",
+            "package_name": "influxdb-container",
+            "description": "Time-series database",
+            "tags": ["role::container-app"],
+            "web_ui": {
+                "enabled": True,
+                "port": 8086,
+            },
+        }
+        # Simulate auto-detected icon path
+        icon_path = Path("/some/path/icon.svg")
+        labels = generate_homarr_labels(metadata, icon_path)
+
+        # Icon should be referenced using package_name and icon extension
+        assert "homarr.icon" in labels
+        assert labels["homarr.icon"] == "/usr/share/pixmaps/influxdb-container.svg"
+
+    def test_labels_include_auto_detected_png_icon(self):
+        """Test that labels handle PNG icons correctly."""
+        metadata = {
+            "name": "Test App",
+            "package_name": "test-container",
+            "description": "Test",
+            "tags": ["role::container-app"],
+            "web_ui": {
+                "enabled": True,
+                "port": 8080,
+            },
+        }
+        # Simulate auto-detected PNG icon
+        icon_path = Path("/some/path/icon.png")
+        labels = generate_homarr_labels(metadata, icon_path)
+
+        assert "homarr.icon" in labels
+        assert labels["homarr.icon"] == "/usr/share/pixmaps/test-container.png"
+
+    def test_explicit_icon_takes_precedence_over_icon_path(self):
+        """Test that explicit icon in metadata takes precedence over icon_path."""
+        metadata = {
+            "name": "Test App",
+            "package_name": "test-container",
+            "description": "Test",
+            "tags": ["role::container-app"],
+            "web_ui": {
+                "enabled": True,
+                "port": 8080,
+            },
+            "icon": "icon.png",  # Explicit PNG in metadata
+        }
+        # Auto-detected SVG icon (should be ignored)
+        icon_path = Path("/some/path/icon.svg")
+        labels = generate_homarr_labels(metadata, icon_path)
+
+        # Should use explicit metadata icon extension, not icon_path
+        assert labels["homarr.icon"] == "/usr/share/pixmaps/test-container.png"
 
     def test_labels_with_path(self):
         """Test labels when web_ui has a specific path."""
