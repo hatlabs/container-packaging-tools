@@ -133,7 +133,9 @@ def copy_source_files(app_def: AppDefinition, source_dir: Path) -> None:
         raise BuildError("Required file missing: docker-compose.yml")
 
     # Inject Homarr labels into docker-compose.yml
-    compose_with_labels = inject_homarr_labels(app_def.compose, app_def.metadata)
+    compose_with_labels = inject_homarr_labels(
+        app_def.compose, app_def.metadata, app_def.icon_path
+    )
     # Fix boolean restart values that PyYAML parsed from "no"/"yes"
     compose_with_labels = _fix_restart_policy(compose_with_labels)
     compose_dst = source_dir / "docker-compose.yml"
@@ -336,19 +338,20 @@ def collect_artifacts(
 
 
 def inject_homarr_labels(
-    compose: dict[str, Any], metadata: dict[str, Any]
+    compose: dict[str, Any], metadata: dict[str, Any], icon_path: Path | None = None
 ) -> dict[str, Any]:
     """Inject Homarr labels into docker-compose services.
 
     Args:
         compose: Original docker-compose dictionary
         metadata: Package metadata
+        icon_path: Path to auto-detected icon file (optional)
 
     Returns:
         Modified docker-compose dictionary with Homarr labels added to services
     """
     # Generate labels from metadata
-    homarr_labels = generate_homarr_labels(metadata)
+    homarr_labels = generate_homarr_labels(metadata, icon_path)
 
     # If no labels to add, return original compose
     if not homarr_labels:
