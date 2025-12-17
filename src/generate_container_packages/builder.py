@@ -11,6 +11,7 @@ import yaml
 from generate_container_packages.labels import generate_homarr_labels
 from generate_container_packages.loader import AppDefinition
 from generate_container_packages.prestart import generate_prestart_script
+from generate_container_packages.registry import generate_registry_toml
 
 
 class BuildError(Exception):
@@ -162,6 +163,9 @@ def copy_source_files(app_def: AppDefinition, source_dir: Path) -> None:
 
     # Generate prestart.sh script
     generate_prestart_file(app_def, source_dir)
+
+    # Generate app registry file for homarr-container-adapter
+    generate_registry_file(app_def, source_dir)
 
 
 def generate_env_template(app_def: AppDefinition, source_dir: Path) -> None:
@@ -444,3 +448,28 @@ def generate_prestart_file(app_def: AppDefinition, source_dir: Path) -> None:
 
     # Make executable
     prestart_file.chmod(0o755)
+
+
+def generate_registry_file(app_def: AppDefinition, source_dir: Path) -> None:
+    """Generate app registry TOML file for homarr-container-adapter.
+
+    The registry file is used by homarr-container-adapter to discover and
+    display apps on the Homarr dashboard. This replaces Docker-label-based
+    discovery with static files.
+
+    Args:
+        app_def: Application definition
+        source_dir: Destination directory
+
+    The file is only generated if web_ui is enabled in metadata.
+    """
+    registry_content = generate_registry_toml(
+        app_def.metadata, app_def.compose, app_def.icon_path
+    )
+
+    if registry_content is None:
+        # web_ui not enabled, skip registry file generation
+        return
+
+    registry_file = source_dir / "webapp-registry.toml"
+    registry_file.write_text(registry_content, encoding="utf-8")

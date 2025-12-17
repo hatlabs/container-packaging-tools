@@ -186,11 +186,15 @@ def build_context(app_def: AppDefinition) -> dict[str, Any]:
     metadata = app_def.metadata
     package_name = metadata["package_name"]
 
+    web_ui = metadata.get("web_ui", {})
+    has_web_ui = web_ui.get("enabled", False) if web_ui else False
+
     context = {
         "package": _build_package_context(metadata),
         "service": _build_service_context(package_name, metadata, app_def.compose),
         "paths": _build_paths(package_name),
-        "web_ui": metadata.get("web_ui", {}),
+        "web_ui": web_ui,
+        "has_web_ui": has_web_ui,
         "default_config": metadata.get("default_config", {}),
         "timestamp": app_def.timestamp,
         "timestamp_rfc2822": app_def.timestamp_rfc2822,
