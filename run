@@ -37,6 +37,27 @@ function bumpversion {
   command bumpversion "$@"
 }
 
+function hooks-install {
+  #@ Install pre-commit hooks using lefthook
+  #@ Category: Development
+  if ! command -v lefthook &> /dev/null; then
+    echo "Error: lefthook not found. Install with: brew install lefthook"
+    exit 1
+  fi
+  lefthook install
+  echo "✅ Pre-commit hooks installed"
+}
+
+function hooks-run {
+  #@ Run pre-commit hooks manually
+  #@ Category: Development
+  if ! command -v lefthook &> /dev/null; then
+    echo "Error: lefthook not found. Install with: brew install lefthook"
+    exit 1
+  fi
+  lefthook run pre-commit
+}
+
 ################################################################################
 # Setup Commands
 
