@@ -257,12 +257,13 @@ class TestRenderAllTemplates:
         content = metainfo_file.read_text()
         assert "8080" in content or "webapp" in content
 
-    def test_systemd_service_renders_volume_paths_correctly(self, tmp_path):
-        """Test that systemd service file uses volume paths, not VolumeInfo repr.
+    def test_systemd_service_does_not_create_volume_directories(self, tmp_path):
+        """Test that systemd service file does not handle volume directories.
 
-        Regression test for bug where {{ directory }} was used instead of
-        {{ directory.path }}, causing mkdir commands like:
-        ExecStartPre=/bin/mkdir -p VolumeInfo(path='...')
+        Volume directory creation and ownership is handled by postinst only.
+        The systemd service should not contain mkdir/chown for volumes -
+        if directories are missing, the service should fail fast rather than
+        silently recreating them.
         """
         metadata = {
             "name": "Volume App",
@@ -298,8 +299,7 @@ class TestRenderAllTemplates:
             icon_path=None,
         )
 
-        # Use the source templates directory (not the legacy root templates/)
-        # The src templates have volume_directories support
+        # Use the source templates directory
         template_dir = (
             Path(__file__).parent.parent
             / "src"
@@ -314,16 +314,16 @@ class TestRenderAllTemplates:
         service_file = output_dir / "debian" / "volume-app-container.service"
         content = service_file.read_text()
 
-        # The service file should NOT contain VolumeInfo repr strings
-        assert "VolumeInfo(" not in content, (
-            "systemd service file contains VolumeInfo repr string - "
-            "template should use {{ directory.path }} not {{ directory }}"
+        # The service file should NOT contain any volume directory handling
+        assert "VolumeInfo(" not in content, "VolumeInfo repr leaked into template"
+        assert "CONTAINER_DATA_ROOT" not in content, (
+            "systemd service should not reference CONTAINER_DATA_ROOT - "
+            "volume directory creation belongs in postinst only"
         )
-
-        # The service file SHOULD contain the actual paths
-        assert "${CONTAINER_DATA_ROOT}/config" in content
-        assert "${CONTAINER_DATA_ROOT}/data" in content
-
-        # Verify the mkdir commands use proper paths
-        assert "ExecStartPre=/bin/mkdir -p ${CONTAINER_DATA_ROOT}/config" in content
-        assert "ExecStartPre=/bin/mkdir -p ${CONTAINER_DATA_ROOT}/data" in content
+        assert "/bin/mkdir" not in content, (
+            "systemd service should not create directories - "
+            "this is handled by postinst"
+        )
+        assert "/bin/chown" not in content, (
+            "systemd service should not set ownership - this is handled by postinst"
+        )
