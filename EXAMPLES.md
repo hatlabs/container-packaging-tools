@@ -8,6 +8,7 @@ This guide provides comprehensive examples for using `container-packaging-tools`
 2. [Minimal Example](#minimal-example)
 3. [Full-Featured Example](#full-featured-example)
 4. [Common Patterns](#common-patterns)
+   - [Pattern 6: Non-Root Container with Volume Permissions](#pattern-6-non-root-container-with-volume-permissions)
 5. [Field Reference](#field-reference)
 6. [Troubleshooting](#troubleshooting)
 7. [Best Practices](#best-practices)
@@ -512,6 +513,87 @@ healthcheck:
   start_period: 40s
 ```
 
+### Pattern 6: Non-Root Container with Volume Permissions
+
+**Important:** Many containers run as non-root users for security. When a container runs as a specific UID, bind-mounted volumes must have matching ownership. The `user` field in docker-compose.yml controls this.
+
+#### Why This Matters
+
+Docker creates bind mount directories as `root:root`. If your container runs as a non-root user (e.g., UID 472 for Grafana), it won't be able to write to the directory and will fail to start.
+
+#### How It Works
+
+When you specify `user` in docker-compose.yml, the tool automatically:
+1. Detects the UID/GID at build time
+2. Generates a `postinst` script that creates data directories with correct ownership
+3. The container can then write to its volumes without permission errors
+
+#### Fixed UID Example (Grafana)
+
+Grafana runs as UID 472 inside the container:
+
+```yaml
+# In docker-compose.yml
+services:
+  grafana:
+    image: grafana/grafana:12.1.4
+    container_name: grafana
+    user: "472"                    # Grafana's internal UID
+    volumes:
+      - ${CONTAINER_DATA_ROOT}/data:/var/lib/grafana:rw
+    # ...
+```
+
+The generated `postinst` will include:
+```bash
+mkdir -p "/var/lib/container-apps/grafana-container/data/data"
+chown 472:472 "/var/lib/container-apps/grafana-container/data/data"
+```
+
+#### Configurable UID/GID Example (LinuxServer.io apps)
+
+Many containers support configurable PUID/PGID:
+
+```yaml
+# In metadata.yaml
+default_config:
+  PUID: "1000"
+  PGID: "1000"
+  # ...
+
+# In docker-compose.yml
+services:
+  app:
+    image: linuxserver/sonarr:latest
+    user: "${PUID}:${PGID}"        # Resolved at build time
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+    volumes:
+      - ${CONTAINER_DATA_ROOT}/config:/config:rw
+```
+
+#### When to Use the `user` Field
+
+| Scenario | Action |
+|----------|--------|
+| Container runs as root | No `user` field needed |
+| Container runs as fixed non-root UID | Add `user: "UID"` or `user: "UID:GID"` |
+| Container supports PUID/PGID | Add `user: "${PUID}:${PGID}"` and define in `default_config` |
+
+#### Finding the Container's UID
+
+Check the container's documentation or inspect the image:
+
+```bash
+# Inspect the image's default user
+docker inspect grafana/grafana:12.1.4 --format '{{.Config.User}}'
+
+# Or run the container and check
+docker run --rm grafana/grafana:12.1.4 id
+# Output: uid=472(grafana) gid=0(root) groups=0(root)
+```
+
 ## Field Reference
 
 ### metadata.yaml Fields
@@ -669,6 +751,35 @@ restart: unless-stopped
 # Correct
 restart: "no"
 ```
+
+#### Error: Container fails with "Permission denied" on volume
+
+**Problem:** Container runs as non-root user but data directory is owned by root.
+
+**Symptoms:**
+- Container exits immediately after starting
+- Logs show "permission denied" or "cannot create directory"
+- Data directory exists but is owned by `root:root`
+
+**Solution:** Add the `user` field to docker-compose.yml specifying the container's UID:
+
+```yaml
+# Check what user the container runs as
+docker run --rm <image> id
+# Example output: uid=472(grafana) gid=0(root)
+
+# Add user field to docker-compose.yml
+services:
+  app:
+    image: <image>
+    user: "472"          # Use the UID from above
+    volumes:
+      - ${CONTAINER_DATA_ROOT}/data:/app/data:rw
+```
+
+After rebuilding the package, the `postinst` script will create the directory with correct ownership.
+
+See [Pattern 6: Non-Root Container with Volume Permissions](#pattern-6-non-root-container-with-volume-permissions) for details.
 
 ### Validation Tips
 
