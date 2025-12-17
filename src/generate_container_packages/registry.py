@@ -104,9 +104,6 @@ def generate_registry_toml(
 
     lines.append(f'category = "{category}"')
 
-    # Default priority (40-59 range for container apps)
-    lines.append("priority = 50")
-
     lines.append("")
     lines.append("[type]")
     if container_name:
@@ -115,9 +112,14 @@ def generate_registry_toml(
         lines.append("# No container_name - external app")
 
     lines.append("")
-    lines.append("# Layout is optional - apps will be auto-positioned by priority")
-    lines.append("# Uncomment and customize if explicit positioning is needed:")
-    lines.append("# [layout]")
+    lines.append("# Layout determines placement order and size")
+    lines.append("[layout]")
+    lines.append("# Priority for placement order (lower = placed first, default: 50)")
+    lines.append(
+        "# Ranges: 00-19 system, 20-39 primary, 40-59 default, 60-79 utility, 80-99 external"
+    )
+    lines.append("priority = 50")
+    lines.append("# Uncomment to customize size and explicit position:")
     lines.append("# width = 1")
     lines.append("# height = 1")
     lines.append("# x_offset = 0")
