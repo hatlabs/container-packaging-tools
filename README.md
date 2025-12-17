@@ -334,6 +334,28 @@ All development happens in Docker containers to ensure consistent Debian Trixie 
 ./run docker:shell
 ```
 
+### Pre-commit Hooks
+
+This project uses [lefthook](https://github.com/evilmartians/lefthook) for pre-commit hooks to run lint checks locally before commits.
+
+```bash
+# Install lefthook (one-time)
+brew install lefthook
+
+# Enable hooks in this repo
+./run hooks-install
+```
+
+**What it checks:**
+
+- `ruff check src/ tests/` - Linting
+
+**Skip hooks when needed:**
+
+```bash
+git commit --no-verify -m "WIP: message"
+```
+
 ### Code Quality
 
 Before submitting changes, ensure all checks pass:
