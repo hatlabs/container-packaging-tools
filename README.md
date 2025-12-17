@@ -126,6 +126,9 @@ services:
     restart: "no"
 ```
 
+> **Note: Non-Root Containers**
+> If your container runs as a non-root user (like Grafana UID 472), add `user: "472"` to docker-compose.yml. This ensures the tool generates correct directory ownership in the postinst script. See [EXAMPLES.md - Pattern 6](EXAMPLES.md#pattern-6-non-root-container-with-volume-permissions) for details.
+
 **config.yml** - Configuration schema:
 ```yaml
 version: "1.0"
