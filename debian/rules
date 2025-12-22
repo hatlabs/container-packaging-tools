@@ -7,9 +7,8 @@ export PYBUILD_NAME=generate-container-packages
 
 override_dh_auto_install:
 	dh_auto_install
-	# Install templates to /usr/share/container-packaging-tools/
-	mkdir -p debian/container-packaging-tools/usr/share/container-packaging-tools
-	cp -r templates debian/container-packaging-tools/usr/share/container-packaging-tools/
+	# Templates are now bundled inside the Python package (generate_container_packages/templates/)
+	# No need to copy to /usr/share - they're installed via pip/wheel
 
 override_dh_builddeb:
 	dh_builddeb --destdir=.

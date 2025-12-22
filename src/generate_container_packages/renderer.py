@@ -114,28 +114,19 @@ def write_rendered_file(content: str, output_path: Path) -> None:
 
 
 def _find_template_directory() -> Path:
-    """Find template directory (installed or local).
+    """Find template directory bundled with the package.
 
     Returns:
         Path to templates directory
 
-    Tries these locations in order:
-    1. Package bundled location: templates/ inside the package
-    2. Installed location: /usr/share/container-packaging-tools/templates/
+    Raises:
+        FileNotFoundError: If templates directory is not found
     """
-    # Try package bundled location first (for pip/uvx installations)
     package_path = Path(__file__).parent / "templates"
     if package_path.exists():
         return package_path
 
-    # Try Debian package install location
-    installed_path = Path("/usr/share/container-packaging-tools/templates")
-    if installed_path.exists():
-        return installed_path
-
-    raise FileNotFoundError(
-        f"Cannot find templates directory. Checked:\n  - {package_path}\n  - {installed_path}"
-    )
+    raise FileNotFoundError(f"Cannot find templates directory at: {package_path}")
 
 
 def _copy_static_files(template_dir: Path, output_dir: Path) -> None:
