@@ -22,6 +22,46 @@ class WebUI(BaseModel):
     )
 
 
+class Layout(BaseModel):
+    """Homarr dashboard layout configuration.
+
+    Controls how the app card appears on the Homarr dashboard including
+    placement priority, size, and optional explicit positioning.
+    """
+
+    priority: int = Field(
+        default=50,
+        ge=0,
+        le=99,
+        description=(
+            "Placement priority (lower = placed first). "
+            "Ranges: 0-19 system, 20-39 primary, 40-59 default, 60-79 utility, 80-99 external"
+        ),
+    )
+    width: int = Field(
+        default=1,
+        ge=1,
+        le=12,
+        description="Card width in grid columns (1-12)",
+    )
+    height: int = Field(
+        default=1,
+        ge=1,
+        description="Card height in grid rows",
+    )
+    x_offset: int | None = Field(
+        default=None,
+        ge=0,
+        le=11,
+        description="Explicit column position (0-11). If omitted, auto-positioned.",
+    )
+    y_offset: int | None = Field(
+        default=None,
+        ge=0,
+        description="Explicit row position. If omitted, auto-positioned.",
+    )
+
+
 class SourceMetadata(BaseModel):
     """Metadata about the source of a converted app.
 
@@ -176,6 +216,11 @@ class PackageMetadata(BaseModel):
 
     # Web UI configuration
     web_ui: WebUI | None = Field(None, description="Web interface configuration")
+
+    # Dashboard layout configuration
+    layout: Layout | None = Field(
+        None, description="Homarr dashboard layout configuration"
+    )
 
     # Default configuration
     default_config: dict[str, str] | None = Field(
