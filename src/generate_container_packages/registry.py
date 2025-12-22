@@ -129,19 +129,23 @@ def generate_registry_toml(
     else:
         lines.append("# No container_name - external app")
 
+    # Get layout configuration with defaults
+    layout = metadata.get("layout", {})
+    priority = layout.get("priority", 50)
+    width = layout.get("width", 1)
+    height = layout.get("height", 1)
+    x_offset = layout.get("x_offset")
+    y_offset = layout.get("y_offset")
+
     lines.append("")
-    lines.append("# Layout determines placement order and size")
     lines.append("[layout]")
-    lines.append("# Priority for placement order (lower = placed first, default: 50)")
-    lines.append(
-        "# Ranges: 00-19 system, 20-39 primary, 40-59 default, 60-79 utility, 80-99 external"
-    )
-    lines.append("priority = 50")
-    lines.append("# Uncomment to customize size and explicit position:")
-    lines.append("# width = 1")
-    lines.append("# height = 1")
-    lines.append("# x_offset = 0")
-    lines.append("# y_offset = 0")
+    lines.append(f"priority = {priority}")
+    lines.append(f"width = {width}")
+    lines.append(f"height = {height}")
+    if x_offset is not None:
+        lines.append(f"x_offset = {x_offset}")
+    if y_offset is not None:
+        lines.append(f"y_offset = {y_offset}")
     lines.append("")
 
     return "\n".join(lines)

@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from schemas.config import ConfigField, ConfigGroup, ConfigSchema
-from schemas.metadata import PackageMetadata, WebUI
+from schemas.metadata import Layout, PackageMetadata, WebUI
 
 
 class TestWebUI:
@@ -53,6 +53,103 @@ class TestWebUI:
         with pytest.raises(ValidationError) as exc_info:
             WebUI(**data)  # type: ignore[arg-type]
         assert "protocol" in str(exc_info.value).lower()
+
+
+class TestLayout:
+    """Tests for Layout nested model."""
+
+    def test_default_values(self):
+        """Test Layout with all default values."""
+        layout = Layout()
+        assert layout.priority == 50
+        assert layout.width == 1
+        assert layout.height == 1
+        assert layout.x_offset is None
+        assert layout.y_offset is None
+
+    def test_custom_priority(self):
+        """Test Layout with custom priority."""
+        layout = Layout(priority=30)
+        assert layout.priority == 30
+        assert layout.width == 1  # default
+
+    def test_custom_size(self):
+        """Test Layout with custom width and height."""
+        layout = Layout(width=2, height=3)
+        assert layout.width == 2
+        assert layout.height == 3
+
+    def test_explicit_position(self):
+        """Test Layout with explicit x/y offsets."""
+        layout = Layout(x_offset=5, y_offset=2)
+        assert layout.x_offset == 5
+        assert layout.y_offset == 2
+
+    def test_full_layout(self):
+        """Test Layout with all fields specified."""
+        layout = Layout(priority=20, width=2, height=2, x_offset=0, y_offset=0)
+        assert layout.priority == 20
+        assert layout.width == 2
+        assert layout.height == 2
+        assert layout.x_offset == 0
+        assert layout.y_offset == 0
+
+    def test_invalid_priority_too_low(self):
+        """Test Layout with priority below valid range."""
+        with pytest.raises(ValidationError) as exc_info:
+            Layout(priority=-1)
+        assert "greater than or equal to 0" in str(exc_info.value)
+
+    def test_invalid_priority_too_high(self):
+        """Test Layout with priority above valid range."""
+        with pytest.raises(ValidationError) as exc_info:
+            Layout(priority=100)
+        assert "less than or equal to 99" in str(exc_info.value)
+
+    def test_invalid_width_too_low(self):
+        """Test Layout with width below valid range."""
+        with pytest.raises(ValidationError) as exc_info:
+            Layout(width=0)
+        assert "greater than or equal to 1" in str(exc_info.value)
+
+    def test_invalid_width_too_high(self):
+        """Test Layout with width above valid range."""
+        with pytest.raises(ValidationError) as exc_info:
+            Layout(width=13)
+        assert "less than or equal to 12" in str(exc_info.value)
+
+    def test_invalid_height_too_low(self):
+        """Test Layout with height below valid range."""
+        with pytest.raises(ValidationError) as exc_info:
+            Layout(height=0)
+        assert "greater than or equal to 1" in str(exc_info.value)
+
+    def test_invalid_x_offset_too_low(self):
+        """Test Layout with x_offset below valid range."""
+        with pytest.raises(ValidationError) as exc_info:
+            Layout(x_offset=-1)
+        assert "greater than or equal to 0" in str(exc_info.value)
+
+    def test_invalid_x_offset_too_high(self):
+        """Test Layout with x_offset above valid range."""
+        with pytest.raises(ValidationError) as exc_info:
+            Layout(x_offset=12)
+        assert "less than or equal to 11" in str(exc_info.value)
+
+    def test_invalid_y_offset_too_low(self):
+        """Test Layout with y_offset below valid range."""
+        with pytest.raises(ValidationError) as exc_info:
+            Layout(y_offset=-1)
+        assert "greater than or equal to 0" in str(exc_info.value)
+
+    def test_priority_boundary_values(self):
+        """Test Layout priority at boundary values."""
+        # Min boundary
+        layout_min = Layout(priority=0)
+        assert layout_min.priority == 0
+        # Max boundary
+        layout_max = Layout(priority=99)
+        assert layout_max.priority == 99
 
 
 class TestPackageMetadata:
@@ -107,6 +204,35 @@ class TestPackageMetadata:
         assert metadata.web_ui is not None
         assert metadata.web_ui.port == 8080
         assert metadata.default_config == {"PORT": "8080", "LOG_LEVEL": "info"}
+
+    def test_metadata_with_layout(self, valid_metadata):
+        """Test metadata with layout configuration."""
+        valid_metadata["layout"] = {
+            "priority": 30,
+            "width": 2,
+            "height": 2,
+        }
+        metadata = PackageMetadata(**valid_metadata)  # type: ignore[arg-type]
+        assert metadata.layout is not None
+        assert metadata.layout.priority == 30
+        assert metadata.layout.width == 2
+        assert metadata.layout.height == 2
+        assert metadata.layout.x_offset is None  # default
+
+    def test_metadata_with_full_layout(self, valid_metadata):
+        """Test metadata with full layout configuration including position."""
+        valid_metadata["layout"] = {
+            "priority": 10,
+            "width": 3,
+            "height": 2,
+            "x_offset": 0,
+            "y_offset": 0,
+        }
+        metadata = PackageMetadata(**valid_metadata)  # type: ignore[arg-type]
+        assert metadata.layout is not None
+        assert metadata.layout.priority == 10
+        assert metadata.layout.x_offset == 0
+        assert metadata.layout.y_offset == 0
 
     def test_missing_required_field(self, valid_metadata):
         """Test missing required field raises ValidationError."""
