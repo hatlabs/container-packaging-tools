@@ -10,6 +10,7 @@ import yaml
 
 from generate_container_packages.labels import generate_homarr_labels
 from generate_container_packages.loader import AppDefinition
+from generate_container_packages.middleware import generate_forwardauth_middleware
 from generate_container_packages.oidc_snippet import generate_oidc_snippet
 from generate_container_packages.prestart import generate_prestart_script
 from generate_container_packages.registry import generate_registry_toml
@@ -177,6 +178,9 @@ def copy_source_files(app_def: AppDefinition, source_dir: Path) -> None:
 
     # Generate OIDC client snippet for Authelia (if OIDC app)
     generate_oidc_snippet_file(app_def, source_dir)
+
+    # Generate per-app ForwardAuth middleware (if custom headers)
+    generate_middleware_file(app_def, source_dir)
 
 
 def generate_env_template(app_def: AppDefinition, source_dir: Path) -> None:
@@ -506,3 +510,26 @@ def generate_oidc_snippet_file(app_def: AppDefinition, source_dir: Path) -> None
 
     oidc_snippet_file = source_dir / "oidc-client.yml"
     oidc_snippet_file.write_text(snippet_content, encoding="utf-8")
+
+
+def generate_middleware_file(app_def: AppDefinition, source_dir: Path) -> None:
+    """Generate per-app ForwardAuth middleware file for Traefik.
+
+    The middleware file is installed to
+    /var/lib/container-apps/traefik-container/dynamic/{app_id}.yml
+    and loaded by Traefik's file provider.
+
+    Args:
+        app_def: Application definition
+        source_dir: Destination directory
+
+    The file is only generated if custom forward_auth headers are specified.
+    """
+    middleware_content = generate_forwardauth_middleware(app_def.metadata)
+
+    if middleware_content is None:
+        # No custom headers, skip middleware generation
+        return
+
+    middleware_file = source_dir / "traefik-middleware.yml"
+    middleware_file.write_text(middleware_content, encoding="utf-8")
