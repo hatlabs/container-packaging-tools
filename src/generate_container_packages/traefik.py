@@ -71,7 +71,11 @@ def generate_traefik_labels(
     # Add middleware based on auth mode
     if auth_mode == "forward_auth":
         forward_auth_config = traefik_config.get("forward_auth") or {}
-        headers = forward_auth_config.get("headers") if isinstance(forward_auth_config, dict) else None
+        headers = (
+            forward_auth_config.get("headers")
+            if isinstance(forward_auth_config, dict)
+            else None
+        )
         if headers:
             # Per-app middleware with custom headers
             labels[f"traefik.http.routers.{app_id}.middlewares"] = (
