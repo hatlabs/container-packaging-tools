@@ -18,15 +18,28 @@ def generate_forwardauth_middleware(metadata: dict[str, Any]) -> str | None:
     Returns:
         YAML content for Traefik dynamic config, or None if not needed
     """
-    traefik_config = metadata.get("traefik")
-    if not traefik_config:
+    routing_config = metadata.get("routing")
+    if not routing_config:
         return None
+
+    # Get auth configuration
+    auth_config = routing_config.get("auth")
+    if not auth_config:
+        return None
+
+    # Handle both nested dict format and flat string format
+    if isinstance(auth_config, dict):
+        auth_mode = auth_config.get("mode", "forward_auth")
+        forward_auth = auth_config.get("forward_auth")
+    else:
+        # Flat format: auth is just the mode string
+        auth_mode = auth_config
+        forward_auth = routing_config.get("forward_auth")
 
     # Only generate for forward_auth mode
-    if traefik_config.get("auth") != "forward_auth":
+    if auth_mode != "forward_auth":
         return None
 
-    forward_auth = traefik_config.get("forward_auth")
     if not forward_auth:
         return None
 
