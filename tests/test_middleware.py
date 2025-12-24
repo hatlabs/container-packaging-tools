@@ -8,8 +8,8 @@ from generate_container_packages.middleware import generate_forwardauth_middlewa
 class TestGenerateForwardAuthMiddleware:
     """Tests for generate_forwardauth_middleware function."""
 
-    def test_no_traefik_config_returns_none(self) -> None:
-        """Apps without traefik config should return None."""
+    def test_no_routing_config_returns_none(self) -> None:
+        """Apps without routing config should return None."""
         metadata = {
             "app_id": "myapp",
             "package_name": "myapp-container",
@@ -22,9 +22,11 @@ class TestGenerateForwardAuthMiddleware:
         metadata = {
             "app_id": "grafana",
             "package_name": "grafana-container",
-            "traefik": {
+            "routing": {
                 "subdomain": "grafana",
-                "auth": "forward_auth",
+                "auth": {
+                    "mode": "forward_auth",
+                },
             },
         }
         result = generate_forwardauth_middleware(metadata)
@@ -35,11 +37,13 @@ class TestGenerateForwardAuthMiddleware:
         metadata = {
             "app_id": "grafana",
             "package_name": "grafana-container",
-            "traefik": {
+            "routing": {
                 "subdomain": "grafana",
-                "auth": "forward_auth",
-                "forward_auth": {
-                    "headers": {},
+                "auth": {
+                    "mode": "forward_auth",
+                    "forward_auth": {
+                        "headers": {},
+                    },
                 },
             },
         }
@@ -51,11 +55,10 @@ class TestGenerateForwardAuthMiddleware:
         metadata = {
             "app_id": "homarr",
             "package_name": "homarr-container",
-            "traefik": {
+            "routing": {
                 "subdomain": "",
-                "auth": "oidc",
-                "oidc": {
-                    "client_name": "Homarr",
+                "auth": {
+                    "mode": "oidc",
                 },
             },
         }
@@ -67,9 +70,11 @@ class TestGenerateForwardAuthMiddleware:
         metadata = {
             "app_id": "avnav",
             "package_name": "avnav-container",
-            "traefik": {
+            "routing": {
                 "subdomain": "avnav",
-                "auth": "none",
+                "auth": {
+                    "mode": "none",
+                },
             },
         }
         result = generate_forwardauth_middleware(metadata)
@@ -80,13 +85,15 @@ class TestGenerateForwardAuthMiddleware:
         metadata = {
             "app_id": "grafana",
             "package_name": "grafana-container",
-            "traefik": {
+            "routing": {
                 "subdomain": "grafana",
-                "auth": "forward_auth",
-                "forward_auth": {
-                    "headers": {
-                        "Remote-User": "X-WEBAUTH-USER",
-                        "Remote-Groups": "X-WEBAUTH-GROUPS",
+                "auth": {
+                    "mode": "forward_auth",
+                    "forward_auth": {
+                        "headers": {
+                            "Remote-User": "X-WEBAUTH-USER",
+                            "Remote-Groups": "X-WEBAUTH-GROUPS",
+                        },
                     },
                 },
             },
@@ -113,13 +120,15 @@ class TestGenerateForwardAuthMiddleware:
         metadata = {
             "app_id": "grafana",
             "package_name": "grafana-container",
-            "traefik": {
+            "routing": {
                 "subdomain": "grafana",
-                "auth": "forward_auth",
-                "forward_auth": {
-                    "headers": {
-                        "Remote-User": "X-WEBAUTH-USER",
-                        "Remote-Groups": "X-WEBAUTH-GROUPS",
+                "auth": {
+                    "mode": "forward_auth",
+                    "forward_auth": {
+                        "headers": {
+                            "Remote-User": "X-WEBAUTH-USER",
+                            "Remote-Groups": "X-WEBAUTH-GROUPS",
+                        },
                     },
                 },
             },
@@ -144,11 +153,13 @@ class TestGenerateForwardAuthMiddleware:
         metadata = {
             "app_id": "grafana",
             "package_name": "grafana-container",
-            "traefik": {
+            "routing": {
                 "subdomain": "grafana",
-                "auth": "forward_auth",
-                "forward_auth": {
-                    "headers": {"Remote-User": "X-WEBAUTH-USER"},
+                "auth": {
+                    "mode": "forward_auth",
+                    "forward_auth": {
+                        "headers": {"Remote-User": "X-WEBAUTH-USER"},
+                    },
                 },
             },
         }
@@ -157,3 +168,30 @@ class TestGenerateForwardAuthMiddleware:
         assert result is not None
         assert "# Per-app ForwardAuth middleware for grafana" in result
         assert "# Installed to /etc/halos/traefik-dynamic.d/grafana.yml" in result
+
+    def test_flat_format_generates_middleware(self) -> None:
+        """Flat format (auth as string) should generate middleware."""
+        metadata = {
+            "app_id": "grafana",
+            "package_name": "grafana-container",
+            "routing": {
+                "subdomain": "grafana",
+                "auth": "forward_auth",  # string, not dict
+                "forward_auth": {  # at routing level
+                    "headers": {
+                        "Remote-User": "X-WEBAUTH-USER",
+                    },
+                },
+            },
+        }
+        result = generate_forwardauth_middleware(metadata)
+
+        assert result is not None
+        assert "authelia-grafana" in result
+        # Parse and verify structure
+        content_lines = [
+            line for line in result.split("\n") if line and not line.startswith("#")
+        ]
+        middleware = yaml.safe_load("\n".join(content_lines))
+        assert "http" in middleware
+        assert "authelia-grafana" in middleware["http"]["middlewares"]
