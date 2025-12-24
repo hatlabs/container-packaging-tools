@@ -168,3 +168,30 @@ class TestGenerateForwardAuthMiddleware:
         assert result is not None
         assert "# Per-app ForwardAuth middleware for grafana" in result
         assert "# Installed to /etc/halos/traefik-dynamic.d/grafana.yml" in result
+
+    def test_flat_format_generates_middleware(self) -> None:
+        """Flat format (auth as string) should generate middleware."""
+        metadata = {
+            "app_id": "grafana",
+            "package_name": "grafana-container",
+            "routing": {
+                "subdomain": "grafana",
+                "auth": "forward_auth",  # string, not dict
+                "forward_auth": {  # at routing level
+                    "headers": {
+                        "Remote-User": "X-WEBAUTH-USER",
+                    },
+                },
+            },
+        }
+        result = generate_forwardauth_middleware(metadata)
+
+        assert result is not None
+        assert "authelia-grafana" in result
+        # Parse and verify structure
+        content_lines = [
+            line for line in result.split("\n") if line and not line.startswith("#")
+        ]
+        middleware = yaml.safe_load("\n".join(content_lines))
+        assert "http" in middleware
+        assert "authelia-grafana" in middleware["http"]["middlewares"]
