@@ -1,0 +1,176 @@
+"""Tests for RoutingConfig schema validation."""
+
+import pytest
+from pydantic import ValidationError
+
+from schemas.metadata import (
+    PackageMetadata,
+    RoutingAuth,
+    RoutingConfig,
+)
+
+
+class TestRoutingConfig:
+    """Tests for RoutingConfig model validation."""
+
+    def test_minimal_routing_config(self) -> None:
+        """Minimal routing config should be valid."""
+        config = RoutingConfig(subdomain="myapp")
+        assert config.subdomain == "myapp"
+        assert config.auth is None  # Default to None, will be forward_auth at runtime
+
+    def test_subdomain_pattern_valid(self) -> None:
+        """Valid subdomains should pass validation."""
+        valid_subdomains = [
+            "myapp",
+            "my-app",
+            "my-long-app-name",
+            "app123",
+            "123app",
+            "",  # Empty string for root domain
+        ]
+        for subdomain in valid_subdomains:
+            config = RoutingConfig(subdomain=subdomain)
+            assert config.subdomain == subdomain
+
+    def test_subdomain_pattern_invalid(self) -> None:
+        """Invalid subdomains should fail validation."""
+        invalid_subdomains = [
+            "MyApp",  # Uppercase
+            "my_app",  # Underscore
+            "-myapp",  # Leading hyphen
+            "myapp-",  # Trailing hyphen
+            "my.app",  # Dot
+            "my app",  # Space
+        ]
+        for subdomain in invalid_subdomains:
+            with pytest.raises(ValidationError):
+                RoutingConfig(subdomain=subdomain)
+
+    def test_auth_modes(self) -> None:
+        """All auth modes should be valid."""
+        for mode in ["forward_auth", "oidc", "none"]:
+            auth = RoutingAuth(mode=mode)  # type: ignore[arg-type]
+            assert auth.mode == mode
+
+    def test_invalid_auth_mode(self) -> None:
+        """Invalid auth mode should fail validation."""
+        with pytest.raises(ValidationError):
+            RoutingAuth(mode="invalid")  # type: ignore[arg-type]
+
+    def test_host_port_valid_range(self) -> None:
+        """Host port in valid range should pass."""
+        config = RoutingConfig(subdomain="myapp", host_port=3000)
+        assert config.host_port == 3000
+
+        config = RoutingConfig(subdomain="myapp", host_port=1)
+        assert config.host_port == 1
+
+        config = RoutingConfig(subdomain="myapp", host_port=65535)
+        assert config.host_port == 65535
+
+    def test_host_port_invalid_range(self) -> None:
+        """Host port outside valid range should fail."""
+        with pytest.raises(ValidationError):
+            RoutingConfig(subdomain="myapp", host_port=0)
+
+        with pytest.raises(ValidationError):
+            RoutingConfig(subdomain="myapp", host_port=65536)
+
+        with pytest.raises(ValidationError):
+            RoutingConfig(subdomain="myapp", host_port=-1)
+
+
+class TestRoutingAuth:
+    """Tests for RoutingAuth model validation."""
+
+    def test_default_mode(self) -> None:
+        """Default auth mode should be forward_auth."""
+        auth = RoutingAuth()
+        assert auth.mode == "forward_auth"
+
+    def test_forward_auth_with_headers(self) -> None:
+        """Forward auth with custom headers should be valid."""
+        auth = RoutingAuth(
+            mode="forward_auth",
+            forward_auth={"headers": {"Remote-User": "X-WEBAUTH-USER"}},
+        )
+        assert auth.mode == "forward_auth"
+        assert auth.forward_auth is not None
+        assert auth.forward_auth.headers["Remote-User"] == "X-WEBAUTH-USER"
+
+
+class TestPackageMetadataWithRouting:
+    """Tests for PackageMetadata with routing field."""
+
+    @pytest.fixture
+    def base_metadata(self) -> dict:
+        """Base valid metadata for testing."""
+        return {
+            "name": "Test App",
+            "app_id": "testapp",
+            "version": "1.0.0",
+            "description": "A test application",
+            "maintainer": "Test <test@example.com>",
+            "license": "MIT",
+            "tags": ["role::container-app"],
+            "debian_section": "web",
+            "architecture": "all",
+        }
+
+    def test_routing_field_accepted(self, base_metadata: dict) -> None:
+        """routing field should be accepted in PackageMetadata."""
+        base_metadata["routing"] = {
+            "subdomain": "testapp",
+        }
+        metadata = PackageMetadata(**base_metadata)
+        assert metadata.routing is not None
+        assert metadata.routing.subdomain == "testapp"
+
+    def test_traefik_field_still_works(self, base_metadata: dict) -> None:
+        """traefik field should still work for backwards compatibility."""
+        base_metadata["traefik"] = {
+            "subdomain": "testapp",
+            "auth": "forward_auth",
+        }
+        metadata = PackageMetadata(**base_metadata)
+        assert metadata.traefik is not None
+        assert metadata.traefik.subdomain == "testapp"
+
+    def test_both_routing_and_traefik_routing_takes_precedence(
+        self, base_metadata: dict
+    ) -> None:
+        """When both are specified, routing takes precedence."""
+        base_metadata["routing"] = {"subdomain": "routing-subdomain"}
+        base_metadata["traefik"] = {"subdomain": "traefik-subdomain"}
+        metadata = PackageMetadata(**base_metadata)
+        # routing should be preferred
+        assert metadata.routing is not None
+        assert metadata.routing.subdomain == "routing-subdomain"
+
+    def test_full_routing_config(self, base_metadata: dict) -> None:
+        """Full routing config should be valid."""
+        base_metadata["web_ui"] = {"enabled": True, "port": 3000}
+        base_metadata["routing"] = {
+            "subdomain": "grafana",
+            "auth": {
+                "mode": "forward_auth",
+                "forward_auth": {
+                    "headers": {
+                        "Remote-User": "X-WEBAUTH-USER",
+                        "Remote-Groups": "X-WEBAUTH-GROUPS",
+                    },
+                },
+            },
+            "host_port": None,
+        }
+        metadata = PackageMetadata(**base_metadata)
+        assert metadata.routing is not None
+        assert metadata.routing.subdomain == "grafana"
+        assert metadata.routing.auth is not None
+        assert metadata.routing.auth.mode == "forward_auth"
+        assert metadata.routing.auth.forward_auth is not None
+        assert (
+            metadata.routing.auth.forward_auth.headers["Remote-User"]
+            == "X-WEBAUTH-USER"
+        )
