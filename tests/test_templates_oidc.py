@@ -22,13 +22,9 @@ class TestOIDCPostinst:
             "tags": ["role::container-app"],
             "debian_section": "net",
             "architecture": "all",
-            "traefik": {
+            "routing": {
                 "subdomain": "oidc",
-                "auth": "oidc",
-                "oidc": {
-                    "client_name": "OIDC App",
-                    "redirect_path": "/callback",
-                },
+                "auth": {"mode": "oidc"},
             },
         }
 
@@ -71,9 +67,9 @@ class TestOIDCPostinst:
             "tags": ["role::container-app"],
             "debian_section": "net",
             "architecture": "all",
-            "traefik": {
+            "routing": {
                 "subdomain": "fwd",
-                "auth": "forward_auth",
+                "auth": {"mode": "forward_auth"},
             },
         }
 
@@ -119,13 +115,9 @@ class TestOIDCPostrm:
             "tags": ["role::container-app"],
             "debian_section": "net",
             "architecture": "all",
-            "traefik": {
+            "routing": {
                 "subdomain": "oidc",
-                "auth": "oidc",
-                "oidc": {
-                    "client_name": "OIDC App",
-                    "redirect_path": "/callback",
-                },
+                "auth": {"mode": "oidc"},
             },
         }
 
@@ -167,12 +159,14 @@ class TestOIDCPostrm:
             "tags": ["role::container-app"],
             "debian_section": "net",
             "architecture": "all",
-            "traefik": {
+            "routing": {
                 "subdomain": "grafana",
-                "auth": "forward_auth",
-                "forward_auth": {
-                    "headers": {
-                        "Remote-User": "X-WEBAUTH-USER",
+                "auth": {
+                    "mode": "forward_auth",
+                    "forward_auth": {
+                        "headers": {
+                            "Remote-User": "X-WEBAUTH-USER",
+                        },
                     },
                 },
             },
@@ -261,13 +255,9 @@ class TestOIDCSystemdService:
             "tags": ["role::container-app"],
             "debian_section": "net",
             "architecture": "all",
-            "traefik": {
+            "routing": {
                 "subdomain": "oidc",
-                "auth": "oidc",
-                "oidc": {
-                    "client_name": "OIDC App",
-                    "redirect_path": "/callback",
-                },
+                "auth": {"mode": "oidc"},
             },
         }
 
@@ -309,9 +299,9 @@ class TestOIDCSystemdService:
             "tags": ["role::container-app"],
             "debian_section": "net",
             "architecture": "all",
-            "traefik": {
+            "routing": {
                 "subdomain": "fwd",
-                "auth": "forward_auth",
+                "auth": {"mode": "forward_auth"},
             },
         }
 
@@ -395,13 +385,9 @@ class TestOIDCRulesInstallation:
             "tags": ["role::container-app"],
             "debian_section": "net",
             "architecture": "all",
-            "traefik": {
+            "routing": {
                 "subdomain": "oidc",
-                "auth": "oidc",
-                "oidc": {
-                    "client_name": "OIDC App",
-                    "redirect_path": "/callback",
-                },
+                "auth": {"mode": "oidc"},
             },
         }
 
@@ -443,12 +429,14 @@ class TestOIDCRulesInstallation:
             "tags": ["role::container-app"],
             "debian_section": "net",
             "architecture": "all",
-            "traefik": {
+            "routing": {
                 "subdomain": "grafana",
-                "auth": "forward_auth",
-                "forward_auth": {
-                    "headers": {
-                        "Remote-User": "X-WEBAUTH-USER",
+                "auth": {
+                    "mode": "forward_auth",
+                    "forward_auth": {
+                        "headers": {
+                            "Remote-User": "X-WEBAUTH-USER",
+                        },
                     },
                 },
             },

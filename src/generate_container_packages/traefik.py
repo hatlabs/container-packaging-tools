@@ -147,16 +147,11 @@ def inject_traefik_network(
     Returns:
         Modified docker-compose with network added (if needed)
     """
-    traefik_config = metadata.get("traefik")
     routing_config = metadata.get("routing")
     web_ui = metadata.get("web_ui")
 
     # Check if routing is needed
-    has_routing = (
-        traefik_config is not None
-        or routing_config is not None
-        or (web_ui and web_ui.get("enabled"))
-    )
+    has_routing = routing_config is not None or (web_ui and web_ui.get("enabled"))
 
     if not has_routing:
         return compose

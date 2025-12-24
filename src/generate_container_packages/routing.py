@@ -32,18 +32,16 @@ def generate_routing_yml(
     """
     app_id = metadata.get("app_id", "")
 
-    # Get routing config from either 'routing' or 'traefik' key
+    # Get routing config
     routing_config = metadata.get("routing")
-    traefik_config = metadata.get("traefik")
     web_ui = metadata.get("web_ui", {})
 
     # Determine if we need routing
     has_routing = routing_config is not None
-    has_traefik = traefik_config is not None
     has_web_ui = web_ui.get("enabled", False) if web_ui else False
 
     # No routing needed if no config and no web UI
-    if not has_routing and not has_traefik and not has_web_ui:
+    if not has_routing and not has_web_ui:
         return None
 
     # Detect host networking from compose
@@ -56,13 +54,13 @@ def generate_routing_yml(
     first_service = next(iter(services.keys()))
 
     # Determine port
-    port = _get_port(routing_config, traefik_config, web_ui, is_host_network)
+    port = _get_port(routing_config, web_ui, is_host_network)
 
     # Determine subdomain
-    subdomain = _get_subdomain(routing_config, traefik_config, app_id)
+    subdomain = _get_subdomain(routing_config, app_id)
 
     # Determine auth mode and config
-    auth_mode, forward_auth_headers = _get_auth_config(routing_config, traefik_config)
+    auth_mode, forward_auth_headers = _get_auth_config(routing_config)
 
     # Build the routing structure
     routing_data: dict[str, Any] = {
@@ -112,22 +110,19 @@ def _detect_host_networking(compose: dict[str, Any]) -> bool:
 
 def _get_port(
     routing_config: dict | None,
-    traefik_config: dict | None,
     web_ui: dict | None,
     is_host_network: bool,
 ) -> int:
     """Get the port for routing.
 
     Priority:
-    1. routing.host_port or traefik.host_port (for host networking)
+    1. routing.host_port (for host networking)
     2. web_ui.port
     """
-    # Check for explicit host_port in routing or traefik config
+    # Check for explicit host_port in routing config
     host_port = None
     if routing_config:
         host_port = routing_config.get("host_port")
-    if host_port is None and traefik_config:
-        host_port = traefik_config.get("host_port")
 
     # For host networking, prefer host_port, fall back to web_ui.port
     if is_host_network:
@@ -149,24 +144,17 @@ def _get_port(
 
 def _get_subdomain(
     routing_config: dict | None,
-    traefik_config: dict | None,
     app_id: str,
 ) -> str:
     """Get the subdomain for routing.
 
     Priority:
     1. routing.subdomain
-    2. traefik.subdomain
-    3. app_id (default)
+    2. app_id (default)
     """
     if routing_config and "subdomain" in routing_config:
         subdomain = routing_config["subdomain"]
         # Could be None (not specified) or "" (empty string for root)
-        if subdomain is not None:
-            return subdomain
-
-    if traefik_config and "subdomain" in traefik_config:
-        subdomain = traefik_config["subdomain"]
         if subdomain is not None:
             return subdomain
 
@@ -176,14 +164,12 @@ def _get_subdomain(
 
 def _get_auth_config(
     routing_config: dict | None,
-    traefik_config: dict | None,
 ) -> tuple[str, dict[str, str] | None]:
     """Get the auth mode and forward_auth headers.
 
     Supports multiple formats:
     1. Nested format: routing.auth = {mode: "...", forward_auth: {...}}
-    2. Flat format (like traefik): routing.auth = "...", routing.forward_auth = {...}
-    3. Legacy traefik format: traefik.auth = "...", traefik.forward_auth = {...}
+    2. Flat format: routing.auth = "...", routing.forward_auth = {...}
 
     Returns:
         Tuple of (auth_mode, forward_auth_headers or None)
@@ -191,7 +177,6 @@ def _get_auth_config(
     auth_mode = "forward_auth"  # Default
     forward_auth_headers: dict[str, str] | None = None
 
-    # Check routing config first
     if routing_config:
         auth_config = routing_config.get("auth")
         if auth_config:
@@ -213,12 +198,5 @@ def _get_auth_config(
             fa_config = routing_config.get("forward_auth")
             if fa_config and fa_config.get("headers"):
                 forward_auth_headers = fa_config["headers"]
-
-    # Fall back to traefik config (legacy format)
-    elif traefik_config:
-        auth_mode = traefik_config.get("auth", "forward_auth")
-        fa_config = traefik_config.get("forward_auth")
-        if fa_config and fa_config.get("headers"):
-            forward_auth_headers = fa_config["headers"]
 
     return auth_mode, forward_auth_headers

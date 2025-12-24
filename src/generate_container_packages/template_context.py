@@ -189,21 +189,32 @@ def build_context(app_def: AppDefinition) -> dict[str, Any]:
     web_ui = metadata.get("web_ui", {})
     has_web_ui = web_ui.get("enabled", False) if web_ui else False
 
-    # Get traefik config for SSO integration
-    traefik = metadata.get("traefik", {})
-    traefik_auth = traefik.get("auth", "forward_auth") if traefik else "forward_auth"
-    is_oidc_app = traefik_auth == "oidc"
+    # Get routing config for SSO integration
+    routing = metadata.get("routing")
+
+    # Determine auth mode from routing config
+    auth_mode = "forward_auth"  # Default
+    if routing:
+        auth_config = routing.get("auth")
+        if isinstance(auth_config, dict):
+            auth_mode = auth_config.get("mode", "forward_auth")
+        elif isinstance(auth_config, str):
+            auth_mode = auth_config
+    is_oidc_app = auth_mode == "oidc"
 
     # Check if custom forward auth headers are configured
-    forward_auth = traefik.get("forward_auth", {}) if traefik else {}
-    has_custom_forward_auth = (
-        bool(forward_auth.get("headers")) if forward_auth else False
-    )
+    has_custom_forward_auth = False
+    if routing:
+        auth_config = routing.get("auth")
+        if isinstance(auth_config, dict):
+            fa_config = auth_config.get("forward_auth", {})
+            has_custom_forward_auth = bool(fa_config.get("headers"))
+        else:
+            fa_config = routing.get("forward_auth", {})
+            has_custom_forward_auth = bool(fa_config.get("headers")) if fa_config else False
 
     # Check if routing.yml should be generated
-    # Routing is generated if: routing config exists, or traefik config exists, or web_ui is enabled
-    routing = metadata.get("routing")
-    has_routing = routing is not None or traefik is not None or has_web_ui
+    has_routing = routing is not None or has_web_ui
 
     context = {
         "package": _build_package_context(metadata),
@@ -226,7 +237,6 @@ def build_context(app_def: AppDefinition) -> dict[str, Any]:
             for f in app_def.asset_files
         ],
         # SSO configuration
-        "traefik": traefik,
         "is_oidc_app": is_oidc_app,
         "has_custom_forward_auth": has_custom_forward_auth,
         # Routing configuration
