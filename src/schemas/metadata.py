@@ -243,6 +243,8 @@ class PackageMetadata(BaseModel):
     Note: package_name is computed at build time from app_id and prefix.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     # Required identity fields
     name: str = Field(min_length=1, description="Human-readable application name")
     app_id: str = Field(
@@ -368,14 +370,9 @@ class PackageMetadata(BaseModel):
         None, description="Homarr dashboard layout configuration"
     )
 
-    # Routing configuration (new generic format)
+    # Routing configuration (generic format)
     routing: RoutingConfig | None = Field(
-        None, description="Generic routing configuration (preferred)"
-    )
-
-    # Traefik routing and SSO configuration (legacy, for backwards compatibility)
-    traefik: TraefikConfig | None = Field(
-        None, description="Traefik routing and SSO configuration (legacy)"
+        None, description="Generic routing configuration"
     )
 
     # Default configuration

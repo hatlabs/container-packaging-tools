@@ -127,26 +127,14 @@ class TestPackageMetadataWithRouting:
         assert metadata.routing is not None
         assert metadata.routing.subdomain == "testapp"
 
-    def test_traefik_field_still_works(self, base_metadata: dict) -> None:
-        """traefik field should still work for backwards compatibility."""
+    def test_traefik_field_is_rejected(self, base_metadata: dict) -> None:
+        """traefik field should be rejected (deprecated)."""
         base_metadata["traefik"] = {
             "subdomain": "testapp",
             "auth": "forward_auth",
         }
-        metadata = PackageMetadata(**base_metadata)
-        assert metadata.traefik is not None
-        assert metadata.traefik.subdomain == "testapp"
-
-    def test_both_routing_and_traefik_routing_takes_precedence(
-        self, base_metadata: dict
-    ) -> None:
-        """When both are specified, routing takes precedence."""
-        base_metadata["routing"] = {"subdomain": "routing-subdomain"}
-        base_metadata["traefik"] = {"subdomain": "traefik-subdomain"}
-        metadata = PackageMetadata(**base_metadata)
-        # routing should be preferred
-        assert metadata.routing is not None
-        assert metadata.routing.subdomain == "routing-subdomain"
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            PackageMetadata(**base_metadata)
 
     def test_full_routing_config(self, base_metadata: dict) -> None:
         """Full routing config should be valid."""
