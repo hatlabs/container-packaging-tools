@@ -10,7 +10,9 @@ The routing configuration is defined in the `metadata.yaml` file under the `rout
 
 ## Configuration Schema
 
-### Basic Example
+### What You Configure in metadata.yaml
+
+The routing configuration in `metadata.yaml` specifies:
 
 ```yaml
 # metadata.yaml
@@ -19,48 +21,55 @@ package_name: marine-grafana-container
 version: 12.1.4
 
 routing:
-  subdomain: grafana
-  backend:
-    service: grafana
-    port: 3000
-  auth:
-    mode: forward_auth
-```
-
-### Full Schema
-
-```yaml
-routing:
   # Subdomain for accessing the app (required)
   # Empty string "" means root domain (e.g., halos.local instead of app.halos.local)
-  subdomain: "myapp"
+  subdomain: grafana
 
+  # Backend type (optional, default: "container")
+  # Use "host" for apps using host networking
   backend:
-    # Docker Compose service name (required)
-    service: "myapp"
+    type: container
 
-    # Container port the app listens on (required)
-    # This is the internal port, not the host-mapped port
-    port: 8080
-
-    # Backend type: "container" (default) or "host"
-    # Use "host" for apps using host networking
-    type: "container"
-
+  # Authentication configuration (required)
   auth:
-    # Authentication mode (required)
-    # Options: "forward_auth", "oidc", "none"
-    mode: "forward_auth"
+    mode: forward_auth  # Options: "forward_auth", "oidc", "none"
 
     # ForwardAuth header configuration (optional)
     # Only used when mode is "forward_auth"
     forward_auth:
       headers:
         # Map Authelia headers to app-expected headers
-        # Key: Authelia header name (sent in authResponseHeaders)
-        # Value: Header name the app expects
         Remote-User: "X-WEBAUTH-USER"
         Remote-Groups: "X-WEBAUTH-GROUPS"
+```
+
+### Auto-Derived Values
+
+The following values are **automatically derived** and should NOT be specified in metadata.yaml:
+
+- **`backend.service`** - Derived from the first service in `docker-compose.yml`
+- **`backend.port`** - Derived from docker-compose port mappings (container port) or `web_ui.port`
+
+### Generated routing.yml
+
+The package build process generates a `routing.yml` file that includes both user-configured and auto-derived values:
+
+```yaml
+# Generated /etc/halos/routing.d/grafana.yml
+app_id: grafana
+
+routing:
+  subdomain: grafana
+  backend:
+    service: grafana      # auto-derived from docker-compose.yml
+    port: 3000            # auto-derived from port mapping
+    type: container
+  auth:
+    mode: forward_auth
+    forward_auth:
+      headers:
+        Remote-User: X-WEBAUTH-USER
+        Remote-Groups: X-WEBAUTH-GROUPS
 ```
 
 ## Authentication Modes
@@ -72,9 +81,6 @@ For applications that don't have native SSO support. Traefik intercepts requests
 ```yaml
 routing:
   subdomain: grafana
-  backend:
-    service: grafana
-    port: 3000
   auth:
     mode: forward_auth
 ```
@@ -86,9 +92,6 @@ Some applications expect authentication headers with specific names. Use the `fo
 ```yaml
 routing:
   subdomain: grafana
-  backend:
-    service: grafana
-    port: 3000
   auth:
     mode: forward_auth
     forward_auth:
@@ -106,9 +109,6 @@ For applications with native OpenID Connect support. The application handles the
 ```yaml
 routing:
   subdomain: ""  # Root domain
-  backend:
-    service: homarr
-    port: 7575
   auth:
     mode: oidc
 ```
@@ -122,9 +122,6 @@ For applications that should be publicly accessible or that implement their own 
 ```yaml
 routing:
   subdomain: signalk
-  backend:
-    service: signalk-server
-    port: 3000
   auth:
     mode: none
 ```
@@ -137,8 +134,6 @@ Some applications require host networking (e.g., to access hardware devices). Us
 routing:
   subdomain: signalk
   backend:
-    service: signalk-server
-    port: 3000
     type: host
   auth:
     mode: none
@@ -153,9 +148,6 @@ To serve an application at the root domain (e.g., `halos.local` instead of `app.
 ```yaml
 routing:
   subdomain: ""
-  backend:
-    service: homarr
-    port: 7575
   auth:
     mode: oidc
 ```
@@ -223,5 +215,5 @@ See the Authelia documentation for available OIDC options.
 
 ## Related Documentation
 
-- [SSO_SPEC.md](../../halos-core-containers/docs/SSO_SPEC.md) - SSO technical specification
-- [SSO_ARCHITECTURE.md](../../halos-core-containers/docs/SSO_ARCHITECTURE.md) - SSO system architecture
+- [SSO_SPEC.md](https://github.com/hatlabs/halos-core-containers/blob/main/docs/SSO_SPEC.md) - SSO technical specification
+- [SSO_ARCHITECTURE.md](https://github.com/hatlabs/halos-core-containers/blob/main/docs/SSO_ARCHITECTURE.md) - SSO system architecture
