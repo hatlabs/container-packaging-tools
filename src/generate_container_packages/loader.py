@@ -52,6 +52,8 @@ class AppDefinition:
         screenshot_paths: list[Path] | None = None,
         assets_dir: Path | None = None,
         asset_files: list[AssetFile] | None = None,
+        default_data_dir: Path | None = None,
+        default_data_files: list[AssetFile] | None = None,
     ):
         """Initialize AppDefinition.
 
@@ -64,6 +66,8 @@ class AppDefinition:
             screenshot_paths: List of paths to screenshot files
             assets_dir: Path to assets directory (if exists)
             asset_files: List of AssetFile objects with path and permissions info
+            default_data_dir: Path to default-data directory (if exists)
+            default_data_files: List of AssetFile objects for default data files
         """
         self.metadata = metadata
         self.compose = compose
@@ -73,6 +77,8 @@ class AppDefinition:
         self.screenshot_paths = screenshot_paths or []
         self.assets_dir = assets_dir
         self.asset_files = asset_files or []
+        self.default_data_dir = default_data_dir
+        self.default_data_files = default_data_files or []
 
         # Computed fields
         now = datetime.now(UTC)
@@ -146,22 +152,16 @@ def load_input_files(directory: Path, prefix: str | None = None) -> AppDefinitio
 
     # Find optional assets directory
     assets_dir = directory / "assets"
-    asset_files: list[AssetFile] = []
-    if assets_dir.is_dir():
-        # Enumerate all files in assets directory (recursively)
-        # Check if each file is executable and create AssetFile objects
-        for f in sorted(assets_dir.rglob("*")):
-            if f.is_file():
-                relative_path = f.relative_to(assets_dir)
-                # Check if file has executable permission (any of user/group/other)
-                is_executable = bool(
-                    f.stat().st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-                )
-                asset_files.append(
-                    AssetFile(path=relative_path, executable=is_executable)
-                )
-    else:
+    asset_files = _enumerate_directory_files(assets_dir)
+    if not assets_dir.is_dir():
         assets_dir = None
+
+    # Find optional default-data directory
+    # These files are copied to the data volume on first install only
+    default_data_dir = directory / "default-data"
+    default_data_files = _enumerate_directory_files(default_data_dir)
+    if not default_data_dir.is_dir():
+        default_data_dir = None
 
     return AppDefinition(
         metadata=metadata,
@@ -172,6 +172,8 @@ def load_input_files(directory: Path, prefix: str | None = None) -> AppDefinitio
         screenshot_paths=screenshot_paths,
         assets_dir=assets_dir,
         asset_files=asset_files,
+        default_data_dir=default_data_dir,
+        default_data_files=default_data_files,
     )
 
 
@@ -222,3 +224,32 @@ def find_optional_files(directory: Path, patterns: list[str]) -> list[Path]:
     unique_files = sorted(set(files))
 
     return unique_files
+
+
+def _enumerate_directory_files(directory: Path) -> list[AssetFile]:
+    """Enumerate files in directory with executable detection.
+
+    Recursively finds all files in the directory and checks their
+    executable permissions.
+
+    Args:
+        directory: Directory to enumerate
+
+    Returns:
+        List of AssetFile objects with relative paths and executable flags,
+        sorted by path. Returns empty list if directory doesn't exist.
+    """
+    if not directory.is_dir():
+        return []
+
+    files: list[AssetFile] = []
+    for f in sorted(directory.rglob("*")):
+        if f.is_file():
+            relative_path = f.relative_to(directory)
+            # Check if file has executable permission (any of user/group/other)
+            is_executable = bool(
+                f.stat().st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+            )
+            files.append(AssetFile(path=relative_path, executable=is_executable))
+
+    return files
