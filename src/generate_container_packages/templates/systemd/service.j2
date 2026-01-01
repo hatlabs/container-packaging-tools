@@ -10,6 +10,8 @@ Wants=halos-authelia-container.service
 [Service]
 Type=simple
 WorkingDirectory={{ service.working_directory }}
+# Sentinel variable to prevent direct docker compose usage (must use systemctl)
+Environment=HALOS_SYSTEMD_STARTED=1
 ExecStartPre={{ service.working_directory }}/prestart.sh
 EnvironmentFile=-{{ service.env_defaults_file }}
 EnvironmentFile=-{{ service.env_file }}
