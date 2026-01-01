@@ -15,6 +15,7 @@ from generate_container_packages.oidc_snippet import generate_oidc_snippet
 from generate_container_packages.prestart import generate_prestart_script
 from generate_container_packages.registry import generate_registry_toml
 from generate_container_packages.routing import generate_routing_yml
+from generate_container_packages.systemd_check import inject_systemd_check
 from generate_container_packages.traefik import inject_traefik_network
 
 
@@ -144,6 +145,9 @@ def copy_source_files(app_def: AppDefinition, source_dir: Path) -> None:
 
     # Inject Traefik network (labels generated at runtime from routing.yml)
     compose_with_labels = inject_traefik_network(compose_with_labels, app_def.metadata)
+
+    # Inject systemd check to prevent direct docker compose usage
+    compose_with_labels = inject_systemd_check(compose_with_labels)
 
     # Fix boolean restart values that PyYAML parsed from "no"/"yes"
     compose_with_labels = _fix_restart_policy(compose_with_labels)
