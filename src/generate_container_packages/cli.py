@@ -585,7 +585,7 @@ def main() -> int:
 
         # Step 2: Load input files
         logger.info("Loading input files...")
-        app_def = load_input_files(input_dir, prefix=args.prefix)
+        app_def = load_input_files(input_dir, prefix=args.prefix, suffix=args.suffix)
         logger.info("✓ Files loaded")
 
         # Step 3: Render templates
@@ -731,6 +731,15 @@ def create_build_argument_parser() -> argparse.ArgumentParser:
         "--prefix",
         metavar="PREFIX",
         help="Package name prefix (e.g., 'marine', 'halos', 'casaos')",
+    )
+    parser.add_argument(
+        "--suffix",
+        metavar="SUFFIX",
+        default="container",
+        help=(
+            "Package name suffix (default: 'container', use '' for no suffix). "
+            "Also applies to @ dependency references in metadata."
+        ),
     )
     parser.add_argument(
         "--keep-temp",

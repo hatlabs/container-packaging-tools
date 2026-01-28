@@ -7,6 +7,7 @@ from generate_container_packages.naming import (
     derive_app_id,
     expand_dependencies,
     expand_dependency,
+    validate_package_name_component,
 )
 
 
@@ -154,6 +155,26 @@ class TestExpandDependency:
         with pytest.raises(ValueError, match="without an app_id"):
             expand_dependency("@", prefix="marine")
 
+    def test_at_reference_with_custom_suffix(self):
+        """Test expanding @ reference with custom suffix."""
+        result = expand_dependency("@influxdb", prefix="marine", suffix="app")
+        assert result == "marine-influxdb-app"
+
+    def test_at_reference_with_empty_suffix(self):
+        """Test expanding @ reference with empty suffix."""
+        result = expand_dependency("@influxdb", prefix="halos", suffix="")
+        assert result == "halos-influxdb"
+
+    def test_at_reference_with_no_prefix_custom_suffix(self):
+        """Test expanding @ reference with no prefix but custom suffix."""
+        result = expand_dependency("@influxdb", prefix=None, suffix="pkg")
+        assert result == "influxdb-pkg"
+
+    def test_at_reference_with_no_prefix_no_suffix(self):
+        """Test expanding @ reference with no prefix and no suffix."""
+        result = expand_dependency("@core", prefix=None, suffix="")
+        assert result == "core"
+
 
 class TestExpandDependencies:
     """Tests for expand_dependencies function (batch processing)."""
@@ -195,6 +216,90 @@ class TestExpandDependencies:
             "casaos-redis-container",
             "marine-signal-k-server-container",
         ]
+
+    def test_expand_with_custom_suffix(self):
+        """Test expanding dependencies with custom suffix."""
+        deps = ["@influxdb", "@grafana"]
+        result = expand_dependencies(deps, prefix="marine", suffix="app")
+
+        assert result == ["marine-influxdb-app", "marine-grafana-app"]
+
+    def test_expand_with_empty_suffix(self):
+        """Test expanding dependencies with empty suffix."""
+        deps = ["@core", "@auth"]
+        result = expand_dependencies(deps, prefix="halos", suffix="")
+
+        assert result == ["halos-core", "halos-auth"]
+
+
+class TestValidatePackageNameComponent:
+    """Tests for validate_package_name_component function."""
+
+    def test_valid_suffix(self):
+        """Test that valid suffixes pass validation."""
+        # Should not raise
+        validate_package_name_component("container", "suffix")
+        validate_package_name_component("pkg", "suffix")
+        validate_package_name_component("app", "suffix")
+        validate_package_name_component("my-suffix", "suffix")
+        validate_package_name_component("suffix123", "suffix")
+
+    def test_valid_prefix(self):
+        """Test that valid prefixes pass validation."""
+        # Should not raise
+        validate_package_name_component("marine", "prefix")
+        validate_package_name_component("halos", "prefix")
+        validate_package_name_component("casaos", "prefix")
+        validate_package_name_component("my-prefix", "prefix")
+
+    def test_empty_value_allowed(self):
+        """Test that empty string is allowed."""
+        # Should not raise - empty means no suffix/prefix
+        validate_package_name_component("", "suffix")
+        validate_package_name_component("", "prefix")
+
+    def test_uppercase_rejected(self):
+        """Test that uppercase characters are rejected."""
+        with pytest.raises(ValueError, match="Invalid suffix"):
+            validate_package_name_component("Container", "suffix")
+        with pytest.raises(ValueError, match="Invalid prefix"):
+            validate_package_name_component("HALOS", "prefix")
+
+    def test_spaces_rejected(self):
+        """Test that spaces are rejected."""
+        with pytest.raises(ValueError, match="Invalid suffix"):
+            validate_package_name_component("my suffix", "suffix")
+
+    def test_special_chars_rejected(self):
+        """Test that special characters are rejected."""
+        with pytest.raises(ValueError, match="Invalid suffix"):
+            validate_package_name_component("suffix@123", "suffix")
+        with pytest.raises(ValueError, match="Invalid suffix"):
+            validate_package_name_component("suffix_name", "suffix")
+
+    def test_leading_hyphen_rejected(self):
+        """Test that leading hyphen is rejected."""
+        with pytest.raises(ValueError, match="Invalid suffix"):
+            validate_package_name_component("-suffix", "suffix")
+
+    def test_leading_number_allowed(self):
+        """Test that leading number is allowed."""
+        # Debian allows packages starting with numbers
+        validate_package_name_component("2fauth", "suffix")
+
+
+class TestComputePackageNameValidation:
+    """Tests for compute_package_name validation."""
+
+    def test_invalid_suffix_raises(self):
+        """Test that invalid suffix raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid suffix"):
+            compute_package_name("myapp", prefix="halos", suffix="Bad Suffix")
+
+    def test_invalid_prefix_raises(self):
+        """Test that invalid prefix raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid prefix"):
+            compute_package_name("myapp", prefix="Bad Prefix", suffix="container")
 
 
 class TestEdgeCases:
