@@ -94,12 +94,15 @@ class AppDefinition:
         self.tool_version = __version__
 
 
-def load_input_files(directory: Path, prefix: str | None = None) -> AppDefinition:
+def load_input_files(
+    directory: Path, prefix: str | None = None, suffix: str = "container"
+) -> AppDefinition:
     """Load all input files from directory into unified data model.
 
     Args:
         directory: Path to input directory
         prefix: Optional package name prefix (e.g., "marine", "halos", "casaos")
+        suffix: Package name suffix (default: "container", use "" for no suffix)
 
     Returns:
         AppDefinition with all loaded data, including computed package_name
@@ -125,17 +128,22 @@ def load_input_files(directory: Path, prefix: str | None = None) -> AppDefinitio
     metadata["package_name"] = compute_package_name(
         metadata["app_id"],
         prefix=prefix,
+        suffix=suffix,
     )
 
     # Expand @ references in dependency fields
     if metadata.get("depends"):
-        metadata["depends"] = expand_dependencies(metadata["depends"], prefix=prefix)
+        metadata["depends"] = expand_dependencies(
+            metadata["depends"], prefix=prefix, suffix=suffix
+        )
     if metadata.get("recommends"):
         metadata["recommends"] = expand_dependencies(
-            metadata["recommends"], prefix=prefix
+            metadata["recommends"], prefix=prefix, suffix=suffix
         )
     if metadata.get("suggests"):
-        metadata["suggests"] = expand_dependencies(metadata["suggests"], prefix=prefix)
+        metadata["suggests"] = expand_dependencies(
+            metadata["suggests"], prefix=prefix, suffix=suffix
+        )
 
     # Find optional icon file (SVG or PNG)
     icon_path = None

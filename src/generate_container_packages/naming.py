@@ -11,6 +11,29 @@ import re
 import unicodedata
 
 
+def validate_package_name_component(value: str, component_name: str) -> None:
+    """Validate a package name component (prefix or suffix).
+
+    Debian package names must consist of lowercase alphanumeric characters
+    and hyphens, and must start with an alphanumeric character.
+
+    Args:
+        value: The component value to validate
+        component_name: Name of the component for error messages (e.g., "suffix")
+
+    Raises:
+        ValueError: If the component contains invalid characters
+    """
+    if not value:
+        return  # Empty values are allowed (means no prefix/suffix)
+
+    if not re.match(r"^[a-z0-9][a-z0-9-]*$", value):
+        raise ValueError(
+            f"Invalid {component_name} '{value}': must contain only lowercase "
+            "alphanumeric characters and hyphens, and start with alphanumeric"
+        )
+
+
 def compute_package_name(
     app_id: str,
     prefix: str | None = None,
@@ -31,6 +54,9 @@ def compute_package_name(
     Returns:
         Full package name (e.g., "marine-signalk-server-container")
 
+    Raises:
+        ValueError: If prefix or suffix contains invalid characters
+
     Examples:
         >>> compute_package_name("grafana", prefix="marine")
         "marine-grafana-container"
@@ -41,6 +67,12 @@ def compute_package_name(
         >>> compute_package_name("myapp", prefix="halos", suffix="")
         "halos-myapp"
     """
+    # Validate components
+    if prefix:
+        validate_package_name_component(prefix, "prefix")
+    if suffix:
+        validate_package_name_component(suffix, "suffix")
+
     parts = []
 
     if prefix:
@@ -115,16 +147,20 @@ def derive_app_id(directory_name: str) -> str:
     return result
 
 
-def expand_dependency(dep: str, prefix: str | None = None) -> str:
+def expand_dependency(
+    dep: str, prefix: str | None = None, suffix: str = "container"
+) -> str:
     """Expand a single dependency reference.
 
     Dependencies starting with @ are expanded to full package names using
-    the current prefix. Other dependencies are returned unchanged.
+    the current prefix and suffix. Other dependencies are returned unchanged.
 
     Args:
         dep: Dependency string (e.g., "@influxdb" or "docker.io (>= 20.10)")
         prefix: Optional prefix for @ references. If None or empty string,
             the expanded name will have no prefix (e.g., "influxdb-container").
+        suffix: Package name suffix (default: "container").
+            Empty string results in no suffix.
 
     Returns:
         Expanded dependency string
@@ -137,6 +173,8 @@ def expand_dependency(dep: str, prefix: str | None = None) -> str:
         "marine-influxdb-container"
         >>> expand_dependency("@influxdb", prefix=None)
         "influxdb-container"
+        >>> expand_dependency("@influxdb", prefix="halos", suffix="")
+        "halos-influxdb"
         >>> expand_dependency("docker.io (>= 20.10)", prefix="marine")
         "docker.io (>= 20.10)"
         >>> expand_dependency("casaos-redis-container", prefix="marine")
@@ -152,19 +190,21 @@ def expand_dependency(dep: str, prefix: str | None = None) -> str:
     if not app_id:
         raise ValueError("Cannot expand '@' without an app_id")
 
-    # Expand to full package name with current prefix
-    return compute_package_name(app_id, prefix=prefix)
+    # Expand to full package name with current prefix and suffix
+    return compute_package_name(app_id, prefix=prefix, suffix=suffix)
 
 
 def expand_dependencies(
     deps: list[str] | None,
     prefix: str | None = None,
+    suffix: str = "container",
 ) -> list[str] | None:
     """Expand a list of dependency references.
 
     Args:
         deps: List of dependency strings, or None
         prefix: Optional prefix for @ references
+        suffix: Package name suffix (default: "container")
 
     Returns:
         List of expanded dependency strings, or None if input was None
@@ -172,8 +212,10 @@ def expand_dependencies(
     Examples:
         >>> expand_dependencies(["docker.io", "@influxdb"], prefix="marine")
         ["docker.io", "marine-influxdb-container"]
+        >>> expand_dependencies(["@core"], prefix="halos", suffix="")
+        ["halos-core"]
     """
     if deps is None:
         return None
 
-    return [expand_dependency(dep, prefix=prefix) for dep in deps]
+    return [expand_dependency(dep, prefix=prefix, suffix=suffix) for dep in deps]

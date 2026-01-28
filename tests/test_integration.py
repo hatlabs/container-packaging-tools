@@ -84,6 +84,32 @@ class TestPipelineLoading:
         assert app_def.icon_path is not None
         assert len(app_def.screenshot_paths) > 0
 
+    def test_load_with_prefix_and_suffix(self):
+        """Test loading with prefix and suffix options."""
+        fixture_dir = Path("tests/fixtures/valid/simple-app")
+
+        # Validate first
+        validate_input_directory(fixture_dir)
+
+        # Load with prefix and empty suffix
+        app_def = load_input_files(fixture_dir, prefix="halos", suffix="")
+
+        # Verify package name computed correctly
+        assert app_def.metadata["package_name"] == "halos-simple-test-app"
+
+    def test_load_with_custom_suffix(self):
+        """Test loading with custom suffix."""
+        fixture_dir = Path("tests/fixtures/valid/simple-app")
+
+        # Validate first
+        validate_input_directory(fixture_dir)
+
+        # Load with custom suffix
+        app_def = load_input_files(fixture_dir, prefix="marine", suffix="app")
+
+        # Verify package name computed correctly
+        assert app_def.metadata["package_name"] == "marine-simple-test-app-app"
+
 
 class TestPipelineRendering:
     """Test rendering phase of the pipeline."""
@@ -272,6 +298,33 @@ class TestEndToEndPipeline:
         result = validate_input_directory(fixture_dir)
         assert not result.success
         assert len(result.errors) > 0
+
+    def test_pipeline_with_empty_suffix(self, tmp_path):
+        """Test complete pipeline with empty suffix (no -container)."""
+        fixture_dir = Path("tests/fixtures/valid/simple-app")
+
+        # Step 1: Validate
+        validate_input_directory(fixture_dir)
+
+        # Step 2: Load with prefix and empty suffix
+        app_def = load_input_files(fixture_dir, prefix="halos", suffix="")
+
+        # Verify package name has no suffix
+        assert app_def.metadata["package_name"] == "halos-simple-test-app"
+
+        # Step 3: Render
+        render_dir = tmp_path / "rendered"
+        render_dir.mkdir()
+        render_all_templates(app_def, render_dir)
+
+        # Verify systemd service uses correct package name
+        debian_dir = render_dir / "debian"
+        service_file = debian_dir / "halos-simple-test-app.service"
+        assert service_file.exists()
+
+        # Verify control file has correct package name
+        control_content = (debian_dir / "control").read_text()
+        assert "Package: halos-simple-test-app" in control_content
 
 
 class TestBuildWithMockedDpkg:

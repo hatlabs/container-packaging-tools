@@ -151,6 +151,31 @@ class TestCreateArgumentParser:
         args = parser.parse_args(["input_dir", "--prefix", "casaos"])
         assert args.prefix == "casaos"
 
+    def test_suffix_option_default(self):
+        """Test that --suffix defaults to 'container'."""
+        parser = create_build_argument_parser()
+        args = parser.parse_args(["input_dir"])
+        assert args.suffix == "container"
+
+    def test_suffix_option_custom(self):
+        """Test that --suffix accepts custom value."""
+        parser = create_build_argument_parser()
+        args = parser.parse_args(["input_dir", "--suffix", "pkg"])
+        assert args.suffix == "pkg"
+
+    def test_suffix_option_empty(self):
+        """Test that --suffix accepts empty string."""
+        parser = create_build_argument_parser()
+        args = parser.parse_args(["input_dir", "--suffix", ""])
+        assert args.suffix == ""
+
+    def test_prefix_and_suffix_together(self):
+        """Test that --prefix and --suffix work together."""
+        parser = create_build_argument_parser()
+        args = parser.parse_args(["input_dir", "--prefix", "halos", "--suffix", ""])
+        assert args.prefix == "halos"
+        assert args.suffix == ""
+
     def test_version_flag(self):
         """Test that --version flag displays version."""
         parser = create_build_argument_parser()

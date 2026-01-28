@@ -304,3 +304,42 @@ class TestPrefixSupport:
 
         # app_id is read from metadata
         assert app_def.metadata["app_id"] == "full-featured-test-app"
+
+
+class TestSuffixSupport:
+    """Tests for suffix support in loader."""
+
+    def test_package_name_with_default_suffix(self):
+        """Test package name uses default 'container' suffix."""
+        app_def = load_input_files(VALID_FIXTURES / "simple-app")
+
+        assert app_def.metadata["app_id"] == "simple-test-app"
+        assert app_def.metadata["package_name"] == "simple-test-app-container"
+
+    def test_package_name_with_custom_suffix(self):
+        """Test package name with custom suffix."""
+        app_def = load_input_files(VALID_FIXTURES / "simple-app", suffix="pkg")
+
+        assert app_def.metadata["package_name"] == "simple-test-app-pkg"
+
+    def test_package_name_with_empty_suffix(self):
+        """Test package name with empty suffix."""
+        app_def = load_input_files(VALID_FIXTURES / "simple-app", suffix="")
+
+        assert app_def.metadata["package_name"] == "simple-test-app"
+
+    def test_package_name_with_prefix_and_empty_suffix(self):
+        """Test package name with prefix but no suffix."""
+        app_def = load_input_files(
+            VALID_FIXTURES / "simple-app", prefix="halos", suffix=""
+        )
+
+        assert app_def.metadata["package_name"] == "halos-simple-test-app"
+
+    def test_package_name_with_prefix_and_custom_suffix(self):
+        """Test package name with both prefix and custom suffix."""
+        app_def = load_input_files(
+            VALID_FIXTURES / "simple-app", prefix="marine", suffix="app"
+        )
+
+        assert app_def.metadata["package_name"] == "marine-simple-test-app-app"
